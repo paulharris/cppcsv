@@ -18,7 +18,7 @@ void do_test_again()
 {
    null_builder2 dbg;
 
-  cppcsv::csvparser cp(dbg,'\'');
+  cppcsv::csvparser<char,char> cp(dbg,'\'',',');
   cp(
     "\n"
     "1, 's' , 3,4   a\n"

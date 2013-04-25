@@ -57,12 +57,16 @@ struct Trans {
   // that way the Events do not need to carry their state with them.
   unsigned char value;
 
+  // active quote character, required in the situation where multiple quote chars are possible
+  // if =0 then there is no active_qchar
+  unsigned char active_qchar;
+
   const char* error_message;
 
     // note: states and events are just empty structs, so pass by copy should be faster
 #define TTS(State, Event, NextState, code) States on(State, Event) { code; return NextState(); }
   //  State          Event        Next_State    Transition_Action
-  TTS(Start,         Eqchar,      ReadQuoted,   { out.begin_row(); });
+  TTS(Start,         Eqchar,      ReadQuoted,   { active_qchar = value; out.begin_row(); });
   TTS(Start,         Esep,        ReadSkipPre,  { out.begin_row(); next_cell(false); });
   TTS(Start,         Enewline,    Start,        { out.begin_row(); out.end_row(); });
   TTS(Start,         Edos_cr,     ReadDosCR,   {});
@@ -76,7 +80,7 @@ struct Trans {
   TTS(ReadDosCR,    Ewhitespace, ReadError, { error_message = "whitespace after CR"; });
   TTS(ReadDosCR,    Echar,     ReadError, { error_message = "char after CR"; });
 
-  TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   { drop_whitespace(); });   // we always want to forget whitespace before the quotes
+  TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   { active_qchar = value; drop_whitespace(); });   // we always want to forget whitespace before the quotes
   TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { next_cell(false); });
   TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); out.end_row(); });
   TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); out.end_row(); });  // same as newline, except we expect to see newline next
@@ -91,10 +95,10 @@ struct Trans {
   TTS(ReadQuoted,    Echar,       ReadQuoted,            { add(); });
 
   TTS(ReadQuotedCheckEscape, Eqchar,      ReadQuoted,          { add(); });
-  TTS(ReadQuotedCheckEscape, Esep,        ReadSkipPre,         { next_cell(); });
-  TTS(ReadQuotedCheckEscape, Enewline,    Start,               { next_cell(); out.end_row(); });
-  TTS(ReadQuotedCheckEscape, Edos_cr,     ReadDosCR,           { next_cell(); out.end_row(); });
-  TTS(ReadQuotedCheckEscape, Ewhitespace, ReadQuotedSkipPost,  {});
+  TTS(ReadQuotedCheckEscape, Esep,        ReadSkipPre,         { active_qchar = 0; next_cell(); });
+  TTS(ReadQuotedCheckEscape, Enewline,    Start,               { active_qchar = 0; next_cell(); out.end_row(); });
+  TTS(ReadQuotedCheckEscape, Edos_cr,     ReadDosCR,           { active_qchar = 0; next_cell(); out.end_row(); });
+  TTS(ReadQuotedCheckEscape, Ewhitespace, ReadQuotedSkipPost,  { active_qchar = 0; });
   TTS(ReadQuotedCheckEscape, Echar,       ReadError,           { error_message = "char after possible endquote"; });
 
   TTS(ReadQuotedSkipPost, Eqchar,      ReadError,           { error_message = "quote after endquote"; });
@@ -199,17 +203,30 @@ private:
 } // namespace csvFSM
 
 
+// has template so users can specify either string (multiples of)
+// or char (single quote/separator)
+
+// so only use either string or char as the template parameters!
+template <class QuoteChars = char, class Separators = char>
 struct csvparser {
 
    // trim_whitespace: remove whitespace around unquoted cells
    // the standard says you should NOT trim, but many people would want to.
    // You can always quote the whitespace, and that will be kept
 
-csvparser(csv_builder &out,char qchar='"',char sep=',', bool trim_whitespace = false)
+csvparser(csv_builder &out)
+ : errmsg(NULL),
+   trans(out, false)
+{
+   add_char(qchar, '"');
+   add_char(sep, ',');
+}
+
+csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false)
  : qchar(qchar),sep(sep),
    errmsg(NULL),
    trans(out, trim_whitespace)
-{} 
+{}
   
   // NOTE: returns true on error
 bool operator()(const std::string &line) // not required to be linewise
@@ -229,9 +246,9 @@ bool operator()(const char *&buf,int len)
       state = next(csvFSM::Edos_cr());
     } else if (*buf == '\n') {
       state = next(csvFSM::Enewline());
-    } else if (*buf == qchar) {
+    } else if ( is_quote_char(qchar, *buf) ) {
       state = next(csvFSM::Eqchar());
-    } else if (*buf == sep) {
+    } else if ( is_sep_char(sep, *buf) ) {
       state = next(csvFSM::Esep());
     } else if (*buf == ' ') { // TODO? more (but DO NOT collide with sep=='\t')
       state = next(csvFSM::Ewhitespace());
@@ -255,13 +272,46 @@ bool operator()(const char *&buf,int len)
   const char * error() const { return errmsg; }
 
 private:
-  char qchar;
-  char sep;
+  QuoteChars qchar;  // could be char or string
+  Separators sep;    // could be char or string
   const char *errmsg;
 
   csvFSM::States state;
   csvFSM::Trans trans;
 
+  // support either single or multiple quote characters
+  bool is_quote_char( char qchar, unsigned int val ) const
+  {
+    return qchar == val;
+  }
+
+  bool is_quote_char( std::string const& qchar, unsigned int val ) const
+  {
+    if (trans.active_qchar != 0)
+       return trans.active_qchar == val;
+    return qchar.find_first_of(val) != std::string::npos;
+  }
+
+  // support either a single sep or a string of seps
+  static bool is_sep_char( char sep, unsigned char value ) {
+     return sep == value;
+  }
+
+  static bool is_sep_char( std::string const& sep, unsigned char value ) {
+    return sep.find_first_of(value) != std::string::npos;
+  }
+
+
+   static void add_char( char & target, char src ) {
+      target = src;
+   }
+
+   static void add_char( std::string & target, char src ) {
+      target.push_back(src);
+   }
+
+
+   // finds the next state, performs transition activity
    template <class Event>
    csvFSM::States next(Event event) {
      return boost::apply_visitor( csvFSM::NextState<Event>(trans), state);

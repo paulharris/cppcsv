@@ -25,7 +25,7 @@ public:
     if (!buf) {
       printf("(null) ");
     } else {
-      printf("\"%.*s\" ",len,buf);
+      printf("[%.*s] ",len,buf);
     }
   }
   virtual void end_row() {
@@ -66,7 +66,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser cp(dbg,'\'');
+  cppcsv::csvparser<char,char> cp(dbg,'\'',',');
   cp(
     "\n"
     "1, 's' , 3,4   a\n"
@@ -92,7 +92,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser cp(dbg,'"');
+  cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test_dos.csv");
 
   in.seekg (0, in.end);
@@ -125,7 +125,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser cp(dbg,'"');
+  cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test.csv");
 
   in.seekg (0, in.end);
@@ -159,7 +159,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser cp(dbg,'"',',',true);
+  cppcsv::csvparser<char,char> cp(dbg,'"',',',true);
   std::ifstream in("test.csv");
 
   in.seekg (0, in.end);
@@ -192,7 +192,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser cp(dbg,'"');
+  cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test_bad_separator.csv");
 
   in.seekg (0, in.end);
@@ -225,8 +225,76 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser cp(dbg,'"');
+  cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test_bad_dos.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+}
+
+    printf("\n\n-- Test multiple quotes (FAIL) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+   // this will fail because it only uses single quotes
+
+  cppcsv::csvparser<char,char> cp(dbg,'"',',');
+  std::ifstream in("test_multiple_quotes.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+}
+
+    printf("\n\n-- Test multiple quotes (SUCCESS) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,");
+  std::ifstream in("test_multiple_quotes.csv");
 
   in.seekg (0, in.end);
   int length = in.tellg();
