@@ -98,9 +98,9 @@ private:
 class builder : public csv_builder {
 public:
   builder(Table &result,bool first_is_header=false);
-  void begin_row();// override;
-  void cell(const char *buf,int len);// override;
-  void end_row();// override;
+  virtual void begin_row();
+  virtual void cell(const char *buf,int len);
+  virtual void end_row();
 private:
   Table &result;
   Row *row;

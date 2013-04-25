@@ -2,10 +2,6 @@
 
 #include "csvbase.h"
 
-#if !defined(__GXX_EXPERIMENTAL_CXX0X__)&&(__cplusplus<201103L)
-  #define override
-#endif
-
 namespace cppcsv {
 
 template <typename Output>  // ("asdf",4)
@@ -23,10 +19,10 @@ public:
       first(true)
   {}
 
-  void begin_row() override {
+  virtual void begin_row() {
     first=true;
   }
-  void cell(const char *buf,int len) override {
+  virtual void cell(const char *buf,int len) {
     if (!first) {
       out(&sep,1);
     } else {
@@ -54,7 +50,7 @@ public:
       out(&qchar,1);
     }
   }
-  void end_row() override {
+  virtual void end_row() {
     out("\n",1);
   }
 private:
@@ -78,7 +74,5 @@ private:
   bool first;
 };
 // }}}
-
-#undef override
 
 }

@@ -5,10 +5,6 @@
 #include "csvwriter.h"
 #include "simplecsv.h"
 
-#if !defined(__GXX_EXPERIMENTAL_CXX0X__)&&(__cplusplus<201103L)
-  #define override
-#endif
-
 #define PRINT_OUT 2
 
 using cppcsv::csv_builder;
@@ -22,24 +18,24 @@ void do_test_again();
 
 class debug_builder : public csv_builder {
 public:
-  void begin_row() override { 
+  virtual void begin_row() {
     printf("begin_row\n");
   }
-  void cell(const char *buf,int len) override {
+  virtual void cell(const char *buf,int len) {
     if (!buf) {
       printf("(null) ");
     } else {
       printf("\"%.*s\" ",len,buf);
     }
   }
-  void end_row() override {
+  virtual void end_row() {
     printf("end_row\n");
   }
 };
 
 class null_builder : public csv_builder {
 public:
-  void cell(const char *buf,int len) override {}
+  virtual void cell(const char *buf,int len) {}
 };
 
 struct file_out {
