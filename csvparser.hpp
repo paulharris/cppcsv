@@ -2,6 +2,7 @@
 #include <string.h>
 #include "csvbase.h"
 
+#include <boost/utility.hpp>
 #include <boost/variant.hpp>
 
 //#define DEBUG
@@ -172,9 +173,9 @@ void next(StateVariant &state,const Event &event,Transitions &trans) {
 
 struct csvparser {
 csvparser(csv_builder &out,char qchar='"',char sep=',')
- : out(out),
-   qchar(qchar),sep(sep),
-   errmsg(NULL)
+ : qchar(qchar),sep(sep),
+   errmsg(NULL),
+   trans(out)
 {} 
   
   // NOTE: returns true on error
@@ -186,8 +187,6 @@ bool operator()(const std::string &line) // not required to be linewise
 
 bool operator()(const char *&buf,int len)
 {
-  csvFSM::States state;
-  csvFSM::Trans trans(out);
   while (len > 0) {
     if (*buf == qchar) {
       csvFSM::next(state,csvFSM::Eqchar(*buf),trans);
@@ -217,10 +216,12 @@ bool operator()(const char *&buf,int len)
   const char * error() const { return errmsg; }
 
 private:
-  csv_builder &out;
   char qchar;
   char sep;
   const char *errmsg;
+
+  csvFSM::States state;
+  csvFSM::Trans trans;
 };
 
 
