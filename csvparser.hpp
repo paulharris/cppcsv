@@ -26,11 +26,13 @@ struct ReadSkipPre {};
 struct ReadQuoted {};
 struct ReadQuotedCheckEscape {};
 struct ReadQuotedSkipPost {};
+struct ReadDosCR {};
 struct ReadUnquoted {};
 struct ReadUnquotedWhitespace {};
 struct ReadError {};
 
 typedef boost::variant<Start,
+                       ReadDosCR,
                        ReadSkipPre,
                        ReadQuoted,
                        ReadQuotedCheckEscape,
@@ -45,6 +47,7 @@ struct Ewhitespace {};
 struct Eqchar {};
 struct Esep {};
 struct Enewline {};
+struct Edos_cr {};   // DOS carriage return
 
 
 struct Trans {
@@ -62,48 +65,63 @@ struct Trans {
   TTS(Start,         Eqchar,      ReadQuoted,   { out.begin_row(); });
   TTS(Start,         Esep,        ReadSkipPre,  { out.begin_row(); next_cell(false); });
   TTS(Start,         Enewline,    Start,        { out.begin_row(); out.end_row(); });
+  TTS(Start,         Edos_cr,     ReadDosCR,   {});
   TTS(Start,         Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } out.begin_row(); });   // we MAY want to remember this whitespace
   TTS(Start,         Echar,       ReadUnquoted, { out.begin_row(); add(); });
+
+  TTS(ReadDosCR,    Eqchar,    ReadError, { error_message = "quote after CR"; });
+  TTS(ReadDosCR,    Esep,      ReadError, { error_message = "sep after CR"; });
+  TTS(ReadDosCR,    Enewline,  Start,     { out.begin_row(); out.end_row(); });
+  TTS(ReadDosCR,    Edos_cr,   ReadError, { error_message = "CR after CR"; });
+  TTS(ReadDosCR,    Ewhitespace, ReadError, { error_message = "whitespace after CR"; });
+  TTS(ReadDosCR,    Echar,     ReadError, { error_message = "char after CR"; });
 
   TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   { drop_whitespace(); });   // we always want to forget whitespace before the quotes
   TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { next_cell(false); });
   TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); out.end_row(); });
+  TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); out.end_row(); });  // same as newline, except we expect to see newline next
   TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } });  // we MAY want to remember this whitespace
   TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add_whitespace(); add(); });   // we add whitespace IF any was recorded
 
   TTS(ReadQuoted,    Eqchar,      ReadQuotedCheckEscape, {});
   TTS(ReadQuoted,    Esep,        ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Enewline,    ReadQuoted,            { add(); });
+  TTS(ReadQuoted,    Edos_cr,     ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Ewhitespace, ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Echar,       ReadQuoted,            { add(); });
 
   TTS(ReadQuotedCheckEscape, Eqchar,      ReadQuoted,          { add(); });
   TTS(ReadQuotedCheckEscape, Esep,        ReadSkipPre,         { next_cell(); });
   TTS(ReadQuotedCheckEscape, Enewline,    Start,               { next_cell(); out.end_row(); });
+  TTS(ReadQuotedCheckEscape, Edos_cr,     ReadDosCR,           { next_cell(); out.end_row(); });
   TTS(ReadQuotedCheckEscape, Ewhitespace, ReadQuotedSkipPost,  {});
   TTS(ReadQuotedCheckEscape, Echar,       ReadError,           { error_message = "char after possible endquote"; });
 
   TTS(ReadQuotedSkipPost, Eqchar,      ReadError,           { error_message = "quote after endquote"; });
   TTS(ReadQuotedSkipPost, Esep,        ReadSkipPre,         { next_cell(); });
   TTS(ReadQuotedSkipPost, Enewline,    Start,               { next_cell(); out.end_row(); });
+  TTS(ReadQuotedSkipPost, Edos_cr,     ReadDosCR,           { next_cell(); out.end_row(); });
   TTS(ReadQuotedSkipPost, Ewhitespace, ReadQuotedSkipPost,  {});
   TTS(ReadQuotedSkipPost, Echar,       ReadError,           { error_message = "char after endquote"; });
 
   TTS(ReadUnquoted, Eqchar,      ReadError,              { error_message = "unexpected quote in unquoted string"; });
   TTS(ReadUnquoted, Esep,        ReadSkipPre,            { next_cell(); });
   TTS(ReadUnquoted, Enewline,    Start,                  { next_cell(); out.end_row(); });
+  TTS(ReadUnquoted, Edos_cr,     ReadDosCR,              { next_cell(); out.end_row(); });
   TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(); });  // must remember whitespace in case its in the middle of the cell
   TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add_whitespace(); add(); });
 
   TTS(ReadUnquotedWhitespace, Eqchar,      ReadError,                { error_message = "unexpected quote after unquoted string"; });
   TTS(ReadUnquotedWhitespace, Esep,        ReadSkipPre,              { add_unquoted_post_whitespace(); next_cell(); });
   TTS(ReadUnquotedWhitespace, Enewline,    Start,                    { add_unquoted_post_whitespace(); next_cell(); out.end_row(); });
+  TTS(ReadUnquotedWhitespace, Edos_cr,     ReadDosCR,                { add_unquoted_post_whitespace(); next_cell(); out.end_row(); });
   TTS(ReadUnquotedWhitespace, Ewhitespace, ReadUnquotedWhitespace,   { remember_whitespace(); });
   TTS(ReadUnquotedWhitespace, Echar,       ReadUnquoted,             { add_whitespace(); add(); });
 
   TTS(ReadError, Eqchar, ReadError,       { assert(error_message); });
   TTS(ReadError, Esep, ReadError,         { assert(error_message); });
   TTS(ReadError, Enewline, ReadError,     { assert(error_message); });
+  TTS(ReadError, Edos_cr,  ReadError,     { assert(error_message); });
   TTS(ReadError, Ewhitespace, ReadError,  { assert(error_message); });
   TTS(ReadError, Echar, ReadError,        { assert(error_message); });
 
@@ -207,14 +225,16 @@ bool operator()(const char *&buf,int len)
      // so that events become empty structs.
      trans.value = *buf;
 
-    if (*buf == qchar) {
+    if (*buf == '\r') {
+      state = next(csvFSM::Edos_cr());
+    } else if (*buf == '\n') {
+      state = next(csvFSM::Enewline());
+    } else if (*buf == qchar) {
       state = next(csvFSM::Eqchar());
     } else if (*buf == sep) {
       state = next(csvFSM::Esep());
     } else if (*buf == ' ') { // TODO? more (but DO NOT collide with sep=='\t')
       state = next(csvFSM::Ewhitespace());
-    } else if (*buf == '\n') {
-      state = next(csvFSM::Enewline());
     } else {
       state = next(csvFSM::Echar());
     }

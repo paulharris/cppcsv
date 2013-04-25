@@ -4,18 +4,22 @@
 
 namespace cppcsv {
 
-template <typename Output>  // ("asdf",4)
-class csv_writer : public csv_builder { // {{{
+template <typename Output>
+class csv_writer : public csv_builder {
 public:
-  csv_writer(char qchar='"',char sep=',',bool smart_quote=false)
+   // note: the CSV standard says to use DOS-CR
+   // https://tools.ietf.org/html/rfc4180
+  csv_writer(char qchar='"',char sep=',',bool smart_quote=false, bool dos_cr=true)
     : qchar(qchar),sep(sep),
       smart_quote(smart_quote),
+      dos_cr(dos_cr),
       first(true)
   {}
-  csv_writer(Output out,char qchar='"',char sep=',',bool smart_quote=false)
+  csv_writer(Output out,char qchar='"',char sep=',',bool smart_quote=false, bool dos_cr=true)
     : out(out),
       qchar(qchar),sep(sep),
       smart_quote(smart_quote),
+      dos_cr(dos_cr),
       first(true)
   {}
 
@@ -51,10 +55,13 @@ public:
     }
   }
   virtual void end_row() {
-    out("\n",1);
+     if (dos_cr)
+       out("\r\n",2);
+     else
+       out("\n",1);
   }
 private:
-  bool need_quote(const char *buf,int len) const { // {{{
+  bool need_quote(const char *buf,int len) const {
     while (len>0) {
       if ( (*buf==qchar)||(*buf==sep)||(*buf=='\n') ) {
         return true;
@@ -64,15 +71,15 @@ private:
     }
     return false;
   }
-  // }}}
+
 private:
   Output out;
   char qchar;
   char sep;
   bool smart_quote;
+  bool dos_cr;
 
   bool first;
 };
-// }}}
 
 }
