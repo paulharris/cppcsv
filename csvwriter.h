@@ -1,11 +1,12 @@
-#ifndef _CSVWRITER_H
-#define _CSVWRITER_H
+#pragma once
 
 #include "csvbase.h"
 
 #if !defined(__GXX_EXPERIMENTAL_CXX0X__)&&(__cplusplus<201103L)
   #define override
 #endif
+
+namespace cppcsv {
 
 template <typename Output>  // ("asdf",4)
 class csv_writer : public csv_builder { // {{{
@@ -80,4 +81,4 @@ private:
 
 #undef override
 
-#endif
+}

@@ -1,4 +1,3 @@
-#include "csvparser.h"
 #include <assert.h>
 #include <string.h>
 #include "csvbase.h"
@@ -12,6 +11,7 @@
   #include <typeinfo>
 #endif
 
+namespace cppcsv {
 namespace csvFSM {
 
 // States
@@ -62,17 +62,12 @@ struct Trans {
   const char* error_message;
   std::string whitespace_state;
 
-  /*  Start  eps  { begin_row }  ReadSkipPre */
+  //  State  Event        Next_State      Transition_Action
   TTS(Start, Eqchar,      ReadQuoted(),   { out.begin_row(); });
   TTS(Start, Esep,        ReadSkipPre(),  { out.begin_row(); next_cell(false); });
   TTS(Start, Enewline,    self,           { out.begin_row(); out.end_row(); });
   TTS(Start, Ewhitespace, ReadSkipPre(),  { out.begin_row(); });
   TTS(Start, Echar,       ReadUnquoted(), { out.begin_row(); add(e); });
-
-  /*
-  template <typename State>
-  TTS(State, Enewline,    Start(), { ("Esep")(); out.end_row(); });  // on(self[_copy],s,Esep(e.value));
-  */
 
   TTS(ReadSkipPre, Eqchar,      ReadQuoted(),   {});
   TTS(ReadSkipPre, Esep,        self,           { next_cell(false); });
@@ -115,6 +110,8 @@ struct Trans {
   TTS(ReadError, Enewline, self, { assert(error_message); });
   TTS(ReadError, Ewhitespace, self, { assert(error_message); });
   TTS(ReadError, Echar, self, { assert(error_message); });
+
+#undef TTS
 
 private:
   template <class Event>
@@ -173,24 +170,21 @@ void next(StateVariant &state,const Event &event,Transitions &trans) {
 } // namespace csvFSM
 
 
-csvparser::csvparser(csv_builder &out,char qchar,char sep)
+struct csvparser {
+csvparser(csv_builder &out,char qchar='"',char sep=',')
  : out(out),
    qchar(qchar),sep(sep),
    errmsg(NULL)
 {} 
-
-
-const char * csvparser::error() const { return errmsg; }
-
-
-bool csvparser::operator()(const std::string &line) // {{{
+  
+  // NOTE: returns true on error
+bool operator()(const std::string &line) // not required to be linewise
 {
   const char *buf=line.c_str();
   return (operator())(buf,line.size());
 }
-// }}}
 
-bool csvparser::operator()(const char *&buf,int len) // {{{
+bool operator()(const char *&buf,int len)
 {
   csvFSM::States state;
   csvFSM::Trans trans(out);
@@ -219,5 +213,15 @@ bool csvparser::operator()(const char *&buf,int len) // {{{
   }
   return false;
 }
-// }}}
 
+  const char * error() const { return errmsg; }
+
+private:
+  csv_builder &out;
+  char qchar;
+  char sep;
+  const char *errmsg;
+};
+
+
+}

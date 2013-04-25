@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <fstream>
-#include "csvparser.h"
+#include "csvparser.hpp"
 #include "csvwriter.h"
 #include "simplecsv.h"
 
@@ -10,6 +10,15 @@
 #endif
 
 #define PRINT_OUT 2
+
+using cppcsv::csv_builder;
+using cppcsv::csvparser;
+using cppcsv::csv_writer;
+
+// defined in tst_csv_2.cpp
+// I am doing this to test that we can use the csv parser in
+// multiple compile units without problems.
+void do_test_again();
 
 class debug_builder : public csv_builder {
 public:
@@ -61,7 +70,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  csvparser cp(dbg,'\'');
+  cppcsv::csvparser cp(dbg,'\'');
   cp(
     "\n"
     "1, 's' , 3,4   a\n"
@@ -87,7 +96,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  csvparser cp(dbg,'"');
+  cppcsv::csvparser cp(dbg,'"');
   std::ifstream in("test.csv");
 
   in.seekg (0, in.end);
@@ -120,7 +129,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  csvparser cp(dbg,'"');
+  cppcsv::csvparser cp(dbg,'"');
   std::ifstream in("test_bad_separator.csv");
 
   in.seekg (0, in.end);
@@ -140,6 +149,8 @@ int main(int argc,char **argv)
   tbl.write(dbg2);
 #endif
 }
+
+  do_test_again();
 
   return 0;
 }

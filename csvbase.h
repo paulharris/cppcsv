@@ -1,5 +1,6 @@
-#ifndef _CSVBASE_H
-#define _CSVBASE_H
+#pragma once
+
+namespace cppcsv {
 
 class csv_builder { // abstract base
 public:
@@ -10,4 +11,4 @@ public:
   virtual void end_row() {}
 };
 
-#endif
+}

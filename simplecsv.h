@@ -1,5 +1,4 @@
-#ifndef _SIMPLECSV_H
-#define _SIMPLECSV_H
+#pragma once
 
 #include <map>
 #include <vector>
@@ -7,6 +6,8 @@
 #include "csvbase.h"
 
 namespace SimpleCSV {
+
+   using cppcsv::csv_builder;
 
 class Table;
 class Row;
@@ -109,5 +110,3 @@ private:
 };
 
 } // namespace SimpleCSV
-
-#endif
