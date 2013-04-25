@@ -1,3 +1,5 @@
 *.d
 *.o
 tst_csv
+.*.sw?
+Session.vim
