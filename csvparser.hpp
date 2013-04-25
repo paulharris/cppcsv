@@ -1,3 +1,8 @@
+// Copyright (c) 2013 Tobias Hoffmann
+//               2013 Paul Harris
+//
+// License: http://opensource.org/licenses/MIT
+
 #include <assert.h>
 #include <string.h>
 #include "csvbase.h"
