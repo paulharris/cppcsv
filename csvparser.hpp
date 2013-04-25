@@ -35,55 +35,44 @@ typedef boost::variant<Start,
                        ReadError> States;
 
 // Events
-struct Echar {
-  Echar(unsigned char value) : value(value) {}
-  unsigned char value;
-};
-struct Ewhitespace { 
-  Ewhitespace(unsigned char value) : value(value) {}
-  unsigned char value;
-};
-struct Eqchar {
-  Eqchar(unsigned char value) : value(value) {}
-  unsigned char value;
-};
-struct Esep {
-  Esep(unsigned char value) : value(value) {}
-  unsigned char value;
-};
-struct Enewline {
-  Enewline(unsigned char value) : value(value) {}
-  unsigned char value;
-};
+struct Echar {};
+struct Ewhitespace {};
+struct Eqchar {};
+struct Esep {};
+struct Enewline {};
+
 
 struct Trans {
-  Trans(csv_builder &out) : error_message(NULL), out(out) {}
+  Trans(csv_builder &out) : value(0), error_message(NULL), out(out) {}
+
+  // this is set before the state change is called,
+  // that way the Events do not need to carry their state with them.
+  unsigned char value;
 
   const char* error_message;
-  std::string whitespace_state;
 
-    // note: states are just empty structs, so pass by copy should be faster
-#define TTS(State, E, Snew, code) States on(State, E const& e) { code; return Snew(); }
+    // note: states and events are just empty structs, so pass by copy should be faster
+#define TTS(State, Event, NextState, code) States on(State, Event) { code; return NextState(); }
   //  State          Event        Next_State    Transition_Action
   TTS(Start,         Eqchar,      ReadQuoted,   { out.begin_row(); });
   TTS(Start,         Esep,        ReadSkipPre,  { out.begin_row(); next_cell(false); });
   TTS(Start,         Enewline,    Start,        { out.begin_row(); out.end_row(); });
   TTS(Start,         Ewhitespace, ReadSkipPre,  { out.begin_row(); });
-  TTS(Start,         Echar,       ReadUnquoted, { out.begin_row(); add(e.value); });
+  TTS(Start,         Echar,       ReadUnquoted, { out.begin_row(); add(); });
 
   TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   {});
   TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { next_cell(false); });
   TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); out.end_row(); });
   TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  {});
-  TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add(e.value); });
+  TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add(); });
 
   TTS(ReadQuoted,    Eqchar,      ReadQuotedCheckEscape, {});
-  TTS(ReadQuoted,    Esep,        ReadQuoted,            { add(e.value); });
-  TTS(ReadQuoted,    Enewline,    ReadQuoted,            { add(e.value); });
-  TTS(ReadQuoted,    Ewhitespace, ReadQuoted,            { add(e.value); });
-  TTS(ReadQuoted,    Echar,       ReadQuoted,            { add(e.value); });
+  TTS(ReadQuoted,    Esep,        ReadQuoted,            { add(); });
+  TTS(ReadQuoted,    Enewline,    ReadQuoted,            { add(); });
+  TTS(ReadQuoted,    Ewhitespace, ReadQuoted,            { add(); });
+  TTS(ReadQuoted,    Echar,       ReadQuoted,            { add(); });
 
-  TTS(ReadQuotedCheckEscape, Eqchar,      ReadQuoted,          { add(e.value); });
+  TTS(ReadQuotedCheckEscape, Eqchar,      ReadQuoted,          { add(); });
   TTS(ReadQuotedCheckEscape, Esep,        ReadSkipPre,         { next_cell(); });
   TTS(ReadQuotedCheckEscape, Enewline,    Start,               { next_cell(); out.end_row(); });
   TTS(ReadQuotedCheckEscape, Ewhitespace, ReadQuotedSkipPost,  {});
@@ -98,14 +87,14 @@ struct Trans {
   TTS(ReadUnquoted, Eqchar,      ReadError,              { error_message = "unexpected quote in unquoted string"; });
   TTS(ReadUnquoted, Esep,        ReadSkipPre,            { next_cell(); });
   TTS(ReadUnquoted, Enewline,    Start,                  { next_cell(); out.end_row(); });
-  TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(e.value); });
-  TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add(e.value); });
+  TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(); });
+  TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add(); });
 
   TTS(ReadUnquotedWhitespace, Eqchar,      ReadError,                { error_message = "unexpected quote after unquoted string"; });
   TTS(ReadUnquotedWhitespace, Esep,        ReadSkipPre,              { add_whitespace(); next_cell(); });
   TTS(ReadUnquotedWhitespace, Enewline,    Start,                    { add_whitespace(); next_cell(); out.end_row(); });
-  TTS(ReadUnquotedWhitespace, Ewhitespace, ReadUnquotedWhitespace,   { remember_whitespace(e.value); });
-  TTS(ReadUnquotedWhitespace, Echar,       ReadUnquoted,             { add_whitespace(); add(e.value); });
+  TTS(ReadUnquotedWhitespace, Ewhitespace, ReadUnquotedWhitespace,   { remember_whitespace(); });
+  TTS(ReadUnquotedWhitespace, Echar,       ReadUnquoted,             { add_whitespace(); add(); });
 
   TTS(ReadError, Eqchar, ReadError,       { assert(error_message); });
   TTS(ReadError, Esep, ReadError,         { assert(error_message); });
@@ -116,23 +105,26 @@ struct Trans {
 #undef TTS
 
 private:
-  void add(unsigned char value)
+  // adds current character to cell buffer
+  void add()
   {
      cell.push_back(value);
   }
 
   // whitespace is remembered until we know if we need to add to the output or forget
-  void remember_whitespace(unsigned char value)
+  void remember_whitespace()
   {
      whitespace_state.push_back(value);
   }
 
+  // adds remembered whitespace to cell buffer
   void add_whitespace()
   {
      cell.append(whitespace_state);
      whitespace_state.clear(); 
   }
 
+  // emits cell to builder and clears buffer
   void next_cell(bool has_content = true)
   {
     if (has_content) {
@@ -143,26 +135,26 @@ private:
     }
     cell.clear();
   }
-private:
+
   csv_builder &out;
   std::string cell;
+  std::string whitespace_state;
 };
 
   template <class Event>
   struct NextState : boost::static_visitor<States> {
-    NextState(const Event &e, Trans &t) : e(e),t(t) {}
+    NextState(Trans &t) : t(t) {}
 
     // note: states are just empty structs, so pass by copy should be faster
     template <class State>
     States operator()(State s) const {
 #ifdef DEBUG
-  printf("%s %c\n",typeid(State).name(),e.value);
+  printf("%s %c\n",typeid(State).name(), t.value);
 #endif
-      return t.on(s,e);
+      return t.on(s,Event());
     }
 
   private:
-    const Event &e;
     Trans &t;
   };
 
@@ -187,16 +179,20 @@ bool operator()(const std::string &line) // not required to be linewise
 bool operator()(const char *&buf,int len)
 {
   while (len > 0) {
+     // note: current character is written directly to trans,
+     // so that events become empty structs.
+     trans.value = *buf;
+
     if (*buf == qchar) {
-      state = next(csvFSM::Eqchar(*buf));
+      state = next(csvFSM::Eqchar());
     } else if (*buf == sep) {
-      state = next(csvFSM::Esep(*buf));
+      state = next(csvFSM::Esep());
     } else if (*buf == ' ') { // TODO? more (but DO NOT collide with sep=='\t')
-      state = next(csvFSM::Ewhitespace(*buf));
+      state = next(csvFSM::Ewhitespace());
     } else if (*buf == '\n') {
-      state = next(csvFSM::Enewline(*buf));
+      state = next(csvFSM::Enewline());
     } else {
-      state = next(csvFSM::Echar(*buf));
+      state = next(csvFSM::Echar());
     }
     if (trans.error_message) {
 #ifdef DEBUG
@@ -223,8 +219,8 @@ private:
   csvFSM::Trans trans;
 
    template <class Event>
-   csvFSM::States next(const Event & event) {
-     return boost::apply_visitor( csvFSM::NextState<Event>(event,trans), state);
+   csvFSM::States next(Event event) {
+     return boost::apply_visitor( csvFSM::NextState<Event>(trans), state);
    }
 };
 
