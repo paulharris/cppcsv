@@ -43,7 +43,7 @@ struct Enewline {};
 
 
 struct Trans {
-  Trans(csv_builder &out) : value(0), error_message(NULL), out(out) {}
+  Trans(csv_builder &out, bool trim_whitespace) : value(0), error_message(NULL), out(out), trim_whitespace(trim_whitespace) {}
 
   // this is set before the state change is called,
   // that way the Events do not need to carry their state with them.
@@ -57,14 +57,14 @@ struct Trans {
   TTS(Start,         Eqchar,      ReadQuoted,   { out.begin_row(); });
   TTS(Start,         Esep,        ReadSkipPre,  { out.begin_row(); next_cell(false); });
   TTS(Start,         Enewline,    Start,        { out.begin_row(); out.end_row(); });
-  TTS(Start,         Ewhitespace, ReadSkipPre,  { out.begin_row(); });
+  TTS(Start,         Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } out.begin_row(); });   // we MAY want to remember this whitespace
   TTS(Start,         Echar,       ReadUnquoted, { out.begin_row(); add(); });
 
-  TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   {});
+  TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   { drop_whitespace(); });   // we always want to forget whitespace before the quotes
   TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { next_cell(false); });
   TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); out.end_row(); });
-  TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  {});
-  TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add(); });
+  TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } });  // we MAY want to remember this whitespace
+  TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add_whitespace(); add(); });   // we add whitespace IF any was recorded
 
   TTS(ReadQuoted,    Eqchar,      ReadQuotedCheckEscape, {});
   TTS(ReadQuoted,    Esep,        ReadQuoted,            { add(); });
@@ -87,12 +87,12 @@ struct Trans {
   TTS(ReadUnquoted, Eqchar,      ReadError,              { error_message = "unexpected quote in unquoted string"; });
   TTS(ReadUnquoted, Esep,        ReadSkipPre,            { next_cell(); });
   TTS(ReadUnquoted, Enewline,    Start,                  { next_cell(); out.end_row(); });
-  TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(); });
-  TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add(); });
+  TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(); });  // must remember whitespace in case its in the middle of the cell
+  TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add_whitespace(); add(); });
 
   TTS(ReadUnquotedWhitespace, Eqchar,      ReadError,                { error_message = "unexpected quote after unquoted string"; });
-  TTS(ReadUnquotedWhitespace, Esep,        ReadSkipPre,              { add_whitespace(); next_cell(); });
-  TTS(ReadUnquotedWhitespace, Enewline,    Start,                    { add_whitespace(); next_cell(); out.end_row(); });
+  TTS(ReadUnquotedWhitespace, Esep,        ReadSkipPre,              { add_unquoted_post_whitespace(); next_cell(); });
+  TTS(ReadUnquotedWhitespace, Enewline,    Start,                    { add_unquoted_post_whitespace(); next_cell(); out.end_row(); });
   TTS(ReadUnquotedWhitespace, Ewhitespace, ReadUnquotedWhitespace,   { remember_whitespace(); });
   TTS(ReadUnquotedWhitespace, Echar,       ReadUnquoted,             { add_whitespace(); add(); });
 
@@ -121,6 +121,19 @@ private:
   void add_whitespace()
   {
      cell.append(whitespace_state);
+     drop_whitespace();
+  }
+
+  // only writes out whitespace IF we aren't trimming
+  void add_unquoted_post_whitespace()
+  {
+     if (!trim_whitespace)
+        cell.append(whitespace_state);
+     drop_whitespace();
+  }
+
+  void drop_whitespace()
+  {
      whitespace_state.clear(); 
   }
 
@@ -139,6 +152,7 @@ private:
   csv_builder &out;
   std::string cell;
   std::string whitespace_state;
+  bool trim_whitespace;
 };
 
   template <class Event>
@@ -163,10 +177,15 @@ private:
 
 
 struct csvparser {
-csvparser(csv_builder &out,char qchar='"',char sep=',')
+
+   // trim_whitespace: remove whitespace around unquoted cells
+   // the standard says you should NOT trim, but many people would want to.
+   // You can always quote the whitespace, and that will be kept
+
+csvparser(csv_builder &out,char qchar='"',char sep=',', bool trim_whitespace = false)
  : qchar(qchar),sep(sep),
    errmsg(NULL),
-   trans(out)
+   trans(out, trim_whitespace)
 {} 
   
   // NOTE: returns true on error
