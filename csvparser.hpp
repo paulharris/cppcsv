@@ -303,6 +303,8 @@ private:
 template <class QuoteChars = char, class Separators = char, class CommentChars = char>
 struct csvparser {
 
+   unsigned int current_row, current_column; // keeps track of where we are upto in the file
+
    // trim_whitespace: remove whitespace around unquoted cells
    // the standard says you should NOT trim, but many people would want to.
    // You can always quote the whitespace, and that will be kept
@@ -317,6 +319,8 @@ csvparser(csv_builder &out)
    add_char(qchar, '"');
    add_char(sep, ',');
    // no comment-chars
+
+   reset_cursor_location();
 }
 
 // constructor that was used before
@@ -325,7 +329,9 @@ csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespa
    comments_must_be_at_start_of_line(true),
    errmsg(NULL),
    trans(out, trim_whitespace, collapse_separators)
-{}
+{
+   reset_cursor_location();
+}
 
 
 // constructor with everything
@@ -334,7 +340,9 @@ csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespa
    comments_must_be_at_start_of_line(comments_must_be_at_start_of_line),
    errmsg(NULL),
    trans(out, trim_whitespace, collapse_separators)
-{}
+{
+   reset_cursor_location();
+}
 
   
   // NOTE: returns true on error
@@ -347,6 +355,13 @@ bool operator()(const std::string &line) // not required to be linewise
 bool operator()(const char *&buf, int len)
 {
    return process_chunk(buf,len);
+}
+
+
+void reset_cursor_location()
+{
+   current_row = 1;     // start at one, as we post-increment
+   current_column = 0;  // start at zero, as we pre-increment
 }
 
 
@@ -365,11 +380,12 @@ bool process_chunk(const char *&buf, const int len)
      // note: current character is written directly to trans,
      // so that events become empty structs.
      trans.value = *buf;
+     ++current_column;
 
      using namespace csvFSM;
 
          if (match_char('\r'))      process_event(Edos_cr());
-    else if (match_char('\n'))      process_event(Enewline());
+    else if (match_char('\n'))      { process_event(Enewline()); ++current_row; current_column = 0; }
     else if (is_quote_char(qchar))  process_event(Eqchar());
     else if (match_char(sep))       process_event(Esep());
 
