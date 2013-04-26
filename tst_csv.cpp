@@ -5,7 +5,7 @@
 #include "csvwriter.h"
 #include "simplecsv.h"
 
-#define PRINT_OUT 1
+#define PRINT_OUT 0
 
 using cppcsv::csv_builder;
 using cppcsv::csvparser;
@@ -107,9 +107,10 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
+#if (PRINT_OUT==1)
   FILE * fdos = fopen("out_test_dos_as_simplecsv_dos.csv","wb");
   FILE * funix = fopen("out_test_dos_as_simplecsv_unix.csv","wb");
   csv_writer<file_out> dbg_unix(file_out(funix),'\'',',',true);
@@ -118,6 +119,7 @@ int main(int argc,char **argv)
   tbl.write(dbg_dos);
   fclose(funix);
   fclose(fdos);
+#endif
 
   delete[] buffer;
 }
@@ -144,10 +146,10 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp_unix.process_chunk(cursor, length))
-        printf("ERROR: %s\n", cp_unix.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp_unix.error(), cp_unix.error_context().c_str());
      cursor = buffer;
      if (cp_dos.process_chunk(cursor, length))
-        printf("ERROR: %s\n", cp_dos.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp_dos.error(), cp_dos.error_context().c_str());
 
      cp_unix.flush();
      cp_dos.flush();
@@ -184,7 +186,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -220,7 +222,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -255,7 +257,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -290,7 +292,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -327,7 +329,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -362,7 +364,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -397,7 +399,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -432,7 +434,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -457,7 +459,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', true);
+  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', true, true);
   std::ifstream in("test_comment.csv");
 
   in.seekg (0, in.end);
@@ -469,7 +471,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -506,7 +508,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -543,7 +545,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -580,7 +582,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -617,7 +619,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -655,7 +657,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -693,7 +695,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -731,7 +733,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp.process_chunk(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)
@@ -769,7 +771,7 @@ int main(int argc,char **argv)
   {
      const char* cursor = buffer;
      if (cp.process_chunk(cursor, length))
-        printf("ERROR: %s\n", cp.error());
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
      cp.flush();
   }
 

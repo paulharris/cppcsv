@@ -313,6 +313,7 @@ struct csvparser {
 csvparser(csv_builder &out)
  : comment(0),
    comments_must_be_at_start_of_line(true),
+   collect_error_context(false),
    errmsg(NULL),
    trans(out, false, false)
 {
@@ -327,6 +328,7 @@ csvparser(csv_builder &out)
 csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
  : qchar(qchar), sep(sep), comment(0),
    comments_must_be_at_start_of_line(true),
+   collect_error_context(false),
    errmsg(NULL),
    trans(out, trim_whitespace, collapse_separators)
 {
@@ -335,10 +337,12 @@ csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespa
 
 
 // constructor with everything
-csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace, bool collapse_separators, CommentChars comment, bool comments_must_be_at_start_of_line)
+// note: collect_error_context adds a small amount of overhead
+csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace, bool collapse_separators, CommentChars comment, bool comments_must_be_at_start_of_line, bool collect_error_context = false)
  : qchar(qchar), sep(sep), comment(comment),
    comments_must_be_at_start_of_line(comments_must_be_at_start_of_line),
    errmsg(NULL),
+   collect_error_context(collect_error_context),
    trans(out, trim_whitespace, collapse_separators)
 {
    reset_cursor_location();
@@ -381,12 +385,23 @@ bool process_chunk(const char *&buf, const int len)
      // so that events become empty structs.
      trans.value = *buf;
      ++current_column;
+     if (collect_error_context)
+        current_row_content.push_back(*buf);
 
      using namespace csvFSM;
 
          if (match_char('\r'))      process_event(Edos_cr());
-    else if (match_char('\n'))      { process_event(Enewline()); ++current_row; current_column = 0; }
+
+    else if (match_char('\n'))      {
+       process_event(Enewline());
+       if (collect_error_context)
+          current_row_content.clear();
+       ++current_row;
+       current_column = 0;
+    }
+
     else if (is_quote_char(qchar))  process_event(Eqchar());
+
     else if (match_char(sep))       process_event(Esep());
 
     else if ( (!comments_must_be_at_start_of_line || trans.row_empty()) && match_char(comment)) {
@@ -426,12 +441,19 @@ bool flush()
 
   const char * error() const { return trans.error_message; }
 
+  std::string error_context() const {
+     return current_row_content + "\n" + std::string(current_column-1,'-') + "^\n";
+  }
+
 private:
   QuoteChars qchar;  // could be char or string
   Separators sep;    // could be char or string
   CommentChars comment;   // could be char or string
   bool comments_must_be_at_start_of_line;
   const char *errmsg;
+
+  bool collect_error_context;
+  std::string current_row_content;  // remember what we read for error printouts
 
   csvFSM::States state;
   csvFSM::Trans trans;
