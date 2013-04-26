@@ -111,6 +111,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
     printf("\n\n-- Test WITHOUT Trim: John Smith should have lots of whitespace around him (and 'Address') ---\n\n");
@@ -144,6 +146,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
 
@@ -178,6 +182,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
     printf("\n\n-- Bad Separator Test ---\n\n");
@@ -211,6 +217,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
     printf("\n\n-- DOS Test (bad CR) ---\n\n");
@@ -244,6 +252,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
     printf("\n\n-- Test multiple quotes (FAIL) ---\n\n");
@@ -279,6 +289,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
     printf("\n\n-- Test multiple quotes (SUCCESS) ---\n\n");
@@ -312,6 +324,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
     printf("\n\n-- Test collapse separators (dont collapse) ---\n\n");
@@ -345,6 +359,8 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
 }
 
     printf("\n\n-- Test collapse separators (do collapse) ---\n\n");
@@ -378,6 +394,193 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
+}
+
+
+
+    printf("\n\n-- Test comment (start of line only, no trim) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', true);
+  std::ifstream in("test_comment.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+
+  delete[] buffer;
+}
+
+
+
+    printf("\n\n-- Test comment (start of line only, with trim) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<char,char> cp(dbg, '"', ',', true, true, '#', true);
+  std::ifstream in("test_comment.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+
+  delete[] buffer;
+}
+
+
+
+    printf("\n\n-- Test comment (any location, no trim) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', false);
+  std::ifstream in("test_comment.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+
+  delete[] buffer;
+}
+
+
+
+    printf("\n\n-- Test comment (any location, with trim) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<char,char> cp(dbg, '"', ',', true, true, '#', false);
+  std::ifstream in("test_comment.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+
+  delete[] buffer;
+}
+
+
+
+    printf("\n\n-- Test comment (alternative comment chars, any location, with trim) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<char,char,std::string> cp(dbg, '"', ',', true, true, "!#", false);
+  std::ifstream in("test_comment.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+
+  delete[] buffer;
 }
 
   do_test_again();

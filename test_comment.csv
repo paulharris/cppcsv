@@ -1,0 +1,8 @@
+a,b,c
+# comment at start
+  # comment with whitespace at the start
+d,e,f# comment after line with no whitespace gap
+g,h,i  # comment after line with whitespace gap
+j,k,l,# comment after line after separator
+m,"#comment in quote is left alone"
+n,o,p  ! comment after line with alternative comment char
