@@ -4,4 +4,4 @@ find_package (Boost)
 include_directories (${Boost_INCLUDE_DIR})
 
 # Note: uses csvparser as a header-only library
-add_executable(tst_csv tst_csv.cpp tst_csv_2.cpp)
+add_executable(tst_csv tst_csv.cpp tst_csv_2.cpp simplecsv.cpp)
