@@ -7,19 +7,15 @@ namespace cppcsv {
 template <typename Output>
 class csv_writer : public csv_builder {
 public:
-   // note: the CSV standard says to use DOS-CR
-   // https://tools.ietf.org/html/rfc4180
-  csv_writer(char qchar='"',char sep=',',bool smart_quote=false, bool dos_cr=true)
+  csv_writer(char qchar='"',char sep=',',bool smart_quote=false)
     : qchar(qchar),sep(sep),
       smart_quote(smart_quote),
-      dos_cr(dos_cr),
       first(true)
   {}
-  csv_writer(Output out,char qchar='"',char sep=',',bool smart_quote=false, bool dos_cr=true)
+  csv_writer(Output out,char qchar='"',char sep=',',bool smart_quote=false)
     : out(out),
       qchar(qchar),sep(sep),
       smart_quote(smart_quote),
-      dos_cr(dos_cr),
       first(true)
   {}
 
@@ -55,10 +51,7 @@ public:
     }
   }
   virtual void end_row() {
-     if (dos_cr)
-       out("\r\n",2);
-     else
-       out("\n",1);
+    out("\n",1);
   }
 private:
   bool need_quote(const char *buf,int len) const {
@@ -77,9 +70,40 @@ private:
   char qchar;
   char sep;
   bool smart_quote;
-  bool dos_cr;
 
   bool first;
+};
+
+
+
+// note: the CSV standard says to use DOS-CR
+// https://tools.ietf.org/html/rfc4180
+template <class Output>
+struct add_dos_cr_out {
+  add_dos_cr_out( Output out ) : out(out) {}
+
+  void operator()(const char *buf,int len) {
+    bool last_was_cr = false;
+    const char *pos = buf;
+
+    while (len>0) {
+      if ( (*pos == '\n') && !last_was_cr ) {
+        out(buf, pos-buf); // print what came before newline
+        out("\r", 1);      // print CR
+        buf = pos;         // start from the newline (it'll be printed later)
+      }
+
+      last_was_cr = (*pos == '\r');
+
+      pos++;
+      len--;
+    }
+
+    out(buf,pos-buf);
+  }
+
+private:
+  Output out;
 };
 
 }

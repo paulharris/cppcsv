@@ -5,7 +5,7 @@
 #include "csvwriter.h"
 #include "simplecsv.h"
 
-#define PRINT_OUT 2
+#define PRINT_OUT 1
 
 using cppcsv::csv_builder;
 using cppcsv::csvparser;
@@ -43,6 +43,7 @@ struct file_out {
 
   void operator()(const char *buf,int len) {
     fwrite(buf,1,len,f);
+    fflush(f); // immediate flush for help with debugging
   }
 private:
   FILE *f;
@@ -109,13 +110,55 @@ int main(int argc,char **argv)
         printf("ERROR: %s\n", cp.error());
   }
 
-#if (PRINT_OUT==1)
-  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
-  tbl.write(dbg2);
-#endif
+  FILE * fdos = fopen("out_test_dos_as_simplecsv_dos.csv","wb");
+  FILE * funix = fopen("out_test_dos_as_simplecsv_unix.csv","wb");
+  csv_writer<file_out> dbg_unix(file_out(funix),'\'',',',true);
+  csv_writer< cppcsv::add_dos_cr_out<file_out> > dbg_dos(file_out(fdos),'\'',',',true);
+  tbl.write(dbg_unix);
+  tbl.write(dbg_dos);
+  fclose(funix);
+  fclose(fdos);
 
   delete[] buffer;
 }
+
+    printf("\n\n-- DOS Test (without trim, write to out_test_dos_as_*.csv) ---\n\n");
+
+{
+  FILE * funix = fopen("out_test_dos_as_unix.csv","wb");
+  FILE * fdos = fopen("out_test_dos_as_dos.csv","wb");
+  csv_writer<file_out> dbg_unix(file_out(funix),'\'',',',true);
+  csv_writer< cppcsv::add_dos_cr_out<file_out> > dbg_dos(file_out(fdos),'\'',',',true);
+
+  cppcsv::csvparser<char,char> cp_unix(dbg_unix,'"',',');
+  cppcsv::csvparser<char,char> cp_dos(dbg_dos,'"',',');
+
+  std::ifstream in("test_dos.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp_unix.process_chunk(cursor, length))
+        printf("ERROR: %s\n", cp_unix.error());
+     cursor = buffer;
+     if (cp_dos.process_chunk(cursor, length))
+        printf("ERROR: %s\n", cp_dos.error());
+
+     cp_unix.flush();
+     cp_dos.flush();
+  }
+
+  fclose(funix);
+  fclose(fdos);
+
+  delete[] buffer;
+}
+
 
     printf("\n\n-- Test WITHOUT Trim: John Smith should have lots of whitespace around him (and 'Address') ---\n\n");
 
@@ -737,8 +780,6 @@ int main(int argc,char **argv)
 
   delete[] buffer;
 }
-
-
   return 0;
 }
 

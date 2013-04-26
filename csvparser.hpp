@@ -27,6 +27,7 @@ struct ReadQuoted {};
 struct ReadQuotedCheckEscape {};
 struct ReadQuotedSkipPost {};
 struct ReadDosCR {};
+struct ReadQuotedDosCR {};
 struct ReadUnquoted {};
 struct ReadUnquotedWhitespace {};
 struct ReadComment {};
@@ -34,6 +35,7 @@ struct ReadError {};
 
 typedef boost::variant<Start,
                        ReadDosCR,
+                       ReadQuotedDosCR,
                        ReadSkipPre,
                        ReadQuoted,
                        ReadQuotedCheckEscape,
@@ -125,10 +127,18 @@ public:
   TTS(ReadQuoted,    Eqchar,      ReadQuotedCheckEscape, {});
   TTS(ReadQuoted,    Esep,        ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Enewline,    ReadQuoted,            { add(); });
-  TTS(ReadQuoted,    Edos_cr,     ReadQuoted,            { add(); });
+  TTS(ReadQuoted,    Edos_cr,     ReadQuotedDosCR,       {});  // do not add, we translate \r\n to \n, even within quotes
   TTS(ReadQuoted,    Ewhitespace, ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Echar,       ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Ecomment,    ReadQuoted,            { add(); });
+
+  TTS(ReadQuotedDosCR,    Eqchar,    ReadError,    { error_message = "quote after CR"; });
+  TTS(ReadQuotedDosCR,    Esep,      ReadError,    { error_message = "sep after CR"; });
+  TTS(ReadQuotedDosCR,    Enewline,  ReadQuoted,   { add(); });   // we see \r\n, so add(\n) and continue reading Quoted
+  TTS(ReadQuotedDosCR,    Edos_cr,   ReadError,    { error_message = "CR after CR"; });
+  TTS(ReadQuotedDosCR,    Ewhitespace, ReadError,  { error_message = "whitespace after CR"; });
+  TTS(ReadQuotedDosCR,    Echar,     ReadError,    { error_message = "char after CR"; });
+  TTS(ReadQuotedDosCR,    Ecomment,  ReadError,    { error_message = "comment after CR"; });
 
   // we are reading quoted text, we see a "... here we are looking to see if its followed by another "
   // if so, then output a quote, else its the end of the quoted section.
@@ -327,7 +337,7 @@ bool operator()(const std::string &line) // not required to be linewise
 }
 
 
-bool operator()(const char *&buf, size_t len)
+bool operator()(const char *&buf, int len)
 {
    return process_chunk(buf,len);
 }
@@ -340,7 +350,7 @@ bool process_chunk(const std::string &line) // not required to be linewise
   return process_chunk(buf,line.size());
 }
 
-bool process_chunk(const char *&buf, size_t len)
+bool process_chunk(const char *&buf, const int len)
 {
   char const * const buf_end = buf + len;
 
