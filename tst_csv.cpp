@@ -663,7 +663,7 @@ int main(int argc,char **argv)
 
 
 
-    printf("\n\n-- Test csv file no newline at the end of the file ---\n\n");
+    printf("\n\n-- Test csv file no newline at the end of the file (no flush) ---\n\n");
 
 {
 #if (PRINT_OUT==1)
@@ -687,16 +687,53 @@ int main(int argc,char **argv)
   if (in)
   {
      const char* cursor = buffer;
-     if (cp(cursor, length))
+     if (cp.process_chunk(cursor, length))
         printf("ERROR: %s\n", cp.error());
   }
 
-  /*
 #if (PRINT_OUT==1)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
-*/
+
+  delete[] buffer;
+}
+
+
+
+    printf("\n\n-- Test csv file no newline at the end of the file (with flush) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+   // trim whitespace, collapse separators
+  cppcsv::csvparser<> cp(dbg);
+  std::ifstream in("test_no_last_newline.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp.process_chunk(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+     cp.flush();
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
 
   delete[] buffer;
 }

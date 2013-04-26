@@ -58,6 +58,7 @@ struct Trans {
      value(0),
      active_qchar(0),
      cell_index(0),
+     row_open(false),
      error_message(NULL),
      out(out),
      trim_whitespace(trim_whitespace),
@@ -80,9 +81,16 @@ private:
   // the cell_index == 0
   unsigned int cell_index;
 
+  // used for flush(), to check if we should push through one last newline
+  bool row_open;
+
 public:
   bool row_empty() const {
      return cell_index == 0 && cell.empty() && whitespace_state.empty();
+  }
+
+  bool is_row_open() const {
+     return row_open;
   }
 
   const char* error_message;
@@ -215,6 +223,7 @@ private:
   void begin_row()
   {
      cell_index = 0;
+     row_open = true;
      out.begin_row();
   }
 
@@ -235,6 +244,7 @@ private:
   void end_row()
   {
      cell_index = 0;
+     row_open = false;
      out.end_row();
   }
 
@@ -310,13 +320,28 @@ csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespa
   // NOTE: returns true on error
 bool operator()(const std::string &line) // not required to be linewise
 {
-  const char *buf=line.c_str();
-  return (operator())(buf,line.size());
+  return process_chunk(line);
 }
 
-bool operator()(const char *&buf,int len)
+
+bool operator()(const char *&buf, size_t len)
 {
-  while (len > 0) {
+   return process_chunk(buf,len);
+}
+
+
+
+bool process_chunk(const std::string &line) // not required to be linewise
+{
+  const char *buf=line.c_str();
+  return process_chunk(buf,line.size());
+}
+
+bool process_chunk(const char *&buf, size_t len)
+{
+  char const * const buf_end = buf + len;
+
+  for ( ; buf != buf_end; ++buf ) {
      // note: current character is written directly to trans,
      // so that events become empty structs.
      trans.value = *buf;
@@ -343,16 +368,27 @@ bool operator()(const char *&buf,int len)
        fprintf(stderr, "State index: %d\n", state.which());
        fprintf(stderr,"csv parse error: %s\n",error());
 #endif
-      errmsg = trans.error_message;
       return true;
     }
-    buf++;
-    len--;
   }
   return false;
 }
 
-  const char * error() const { return errmsg; }
+
+// call this after processing the last chunk
+// this will help when the input data did not finish with a newline
+bool flush()
+{
+  if (trans.is_row_open()) {
+    using namespace csvFSM;
+    process_event( Enewline() );
+  }
+  return (trans.error_message != NULL);
+}
+
+
+
+  const char * error() const { return trans.error_message; }
 
 private:
   QuoteChars qchar;  // could be char or string
