@@ -253,7 +253,7 @@ private:
     template <class State>
     States operator()(State s) const {
 #ifdef DEBUG
-  printf("%s %c\n",typeid(State).name(), t.value);
+  printf("%s %c (%d)\n",typeid(State).name(), t.value, (int)t.value);
 #endif
       return t.on(s,Event());
     }
@@ -341,7 +341,7 @@ bool operator()(const char *&buf,int len)
     if (trans.error_message) {
 #ifdef DEBUG
        fprintf(stderr, "State index: %d\n", state.which());
-       fprintf(stderr,"csv parse error: %s\n",err->type);
+       fprintf(stderr,"csv parse error: %s\n",error());
 #endif
       errmsg = trans.error_message;
       return true;
