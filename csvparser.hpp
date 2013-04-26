@@ -98,7 +98,13 @@ public:
   const char* error_message;
 
     // note: states and events are just empty structs, so pass by copy should be faster
+
+  // for defining a state transition with code
 #define TTS(State, Event, NextState, code) States on(State, Event) { code; return NextState(); }
+
+  // for defining a transition that redirects to another Event handler for this state
+#define REDIRECT(State, Event, OtherEvent) States on(State state, Event) { return on(state,OtherEvent()); }
+
   //  State          Event        Next_State    Transition_Action
   TTS(Start,         Eqchar,      ReadQuoted,   { active_qchar = value; begin_row(); });
   TTS(Start,         Esep,        ReadSkipPre,  { begin_row(); next_cell(false); });
@@ -125,12 +131,12 @@ public:
   TTS(ReadSkipPre,   Ecomment,    ReadComment,  { add_whitespace(); if (!cell.empty()) { next_cell(true); } end_row(); } );   // IF there was anything, then emit a cell else completely ignore the current cell (ie do not emit a null)
 
   TTS(ReadQuoted,    Eqchar,      ReadQuotedCheckEscape, {});
-  TTS(ReadQuoted,    Esep,        ReadQuoted,            { add(); });
-  TTS(ReadQuoted,    Enewline,    ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Edos_cr,     ReadQuotedDosCR,       {});  // do not add, we translate \r\n to \n, even within quotes
-  TTS(ReadQuoted,    Ewhitespace, ReadQuoted,            { add(); });
   TTS(ReadQuoted,    Echar,       ReadQuoted,            { add(); });
-  TTS(ReadQuoted,    Ecomment,    ReadQuoted,            { add(); });
+  REDIRECT(ReadQuoted,    Esep,        Echar )
+  REDIRECT(ReadQuoted,    Enewline,    Echar )
+  REDIRECT(ReadQuoted,    Ewhitespace, Echar )
+  REDIRECT(ReadQuoted,    Ecomment,    Echar )
 
   TTS(ReadQuotedDosCR,    Eqchar,    ReadError,    { error_message = "quote after CR"; });
   TTS(ReadQuotedDosCR,    Esep,      ReadError,    { error_message = "sep after CR"; });
@@ -178,22 +184,23 @@ public:
   TTS(ReadUnquotedWhitespace, Echar,       ReadUnquoted,             { add_whitespace(); add(); });
   TTS(ReadUnquotedWhitespace, Ecomment,    ReadComment,              { add_unquoted_post_whitespace(); next_cell(); end_row(); });
 
-  TTS(ReadError, Eqchar,      ReadError,  { assert(error_message); });
-  TTS(ReadError, Esep,        ReadError,  { assert(error_message); });
-  TTS(ReadError, Enewline,    ReadError,  { assert(error_message); });
-  TTS(ReadError, Edos_cr,     ReadError,  { assert(error_message); });
-  TTS(ReadError, Ewhitespace, ReadError,  { assert(error_message); });
   TTS(ReadError, Echar,       ReadError,  { assert(error_message); });
-  TTS(ReadError, Ecomment,    ReadError,  { assert(error_message); });
+  REDIRECT(ReadError, Eqchar,      Echar)
+  REDIRECT(ReadError, Esep,        Echar)
+  REDIRECT(ReadError, Enewline,    Echar)
+  REDIRECT(ReadError, Edos_cr,     Echar)
+  REDIRECT(ReadError, Ewhitespace, Echar)
+  REDIRECT(ReadError, Ecomment,    Echar)
 
-  TTS(ReadComment, Eqchar,       ReadComment,   {});
-  TTS(ReadComment, Esep,         ReadComment,   {});
   TTS(ReadComment, Enewline,     Start,         {});  // end of line --> end of comment
-  TTS(ReadComment, Edos_cr,      ReadComment,   {});
-  TTS(ReadComment, Ewhitespace,  ReadComment,   {});
   TTS(ReadComment, Echar,        ReadComment,   {});
-  TTS(ReadComment, Ecomment,     ReadComment,   {});
+  REDIRECT(ReadComment, Eqchar,       Echar)
+  REDIRECT(ReadComment, Esep,         Echar)
+  REDIRECT(ReadComment, Edos_cr,      Echar)
+  REDIRECT(ReadComment, Ewhitespace,  Echar)
+  REDIRECT(ReadComment, Ecomment,     Echar)
 
+#undef REDIRECT
 #undef TTS
 
 private:
