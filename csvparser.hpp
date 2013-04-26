@@ -108,7 +108,7 @@ public:
 
   TTS(ReadDosCR,    Eqchar,    ReadError, { error_message = "quote after CR"; });
   TTS(ReadDosCR,    Esep,      ReadError, { error_message = "sep after CR"; });
-  TTS(ReadDosCR,    Enewline,  Start,     { begin_row(); end_row(); });
+  TTS(ReadDosCR,    Enewline,  Start,     { end_row(); });
   TTS(ReadDosCR,    Edos_cr,   ReadError, { error_message = "CR after CR"; });
   TTS(ReadDosCR,    Ewhitespace, ReadError, { error_message = "whitespace after CR"; });
   TTS(ReadDosCR,    Echar,     ReadError, { error_message = "char after CR"; });
@@ -117,7 +117,7 @@ public:
   TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   { active_qchar = value; drop_whitespace(); });   // we always want to forget whitespace before the quotes
   TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { if (!collapse_separators) { next_cell(false); } });
   TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); end_row(); });
-  TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); end_row(); });  // same as newline, except we expect to see newline next
+  TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); });  // same as newline, except we expect to see newline next
   TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } });  // we MAY want to remember this whitespace
   TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add_whitespace(); add(); });   // we add whitespace IF any was recorded
   TTS(ReadSkipPre,   Ecomment,    ReadComment,  { add_whitespace(); if (!cell.empty()) { next_cell(true); } end_row(); } );   // IF there was anything, then emit a cell else completely ignore the current cell (ie do not emit a null)
@@ -135,7 +135,7 @@ public:
   TTS(ReadQuotedCheckEscape, Eqchar,      ReadQuoted,          { add(); });
   TTS(ReadQuotedCheckEscape, Esep,        ReadSkipPre,         { active_qchar = 0; next_cell(); });
   TTS(ReadQuotedCheckEscape, Enewline,    Start,               { active_qchar = 0; next_cell(); end_row(); });
-  TTS(ReadQuotedCheckEscape, Edos_cr,     ReadDosCR,           { active_qchar = 0; next_cell(); end_row(); });
+  TTS(ReadQuotedCheckEscape, Edos_cr,     ReadDosCR,           { active_qchar = 0; next_cell(); });
   TTS(ReadQuotedCheckEscape, Ewhitespace, ReadQuotedSkipPost,  { active_qchar = 0; });
   TTS(ReadQuotedCheckEscape, Echar,       ReadError,           { error_message = "char after possible endquote"; });
   TTS(ReadQuotedCheckEscape, Ecomment,    ReadComment,         { active_qchar = 0; next_cell(); end_row(); });
@@ -144,7 +144,7 @@ public:
   TTS(ReadQuotedSkipPost, Eqchar,      ReadError,           { error_message = "quote after endquote"; });
   TTS(ReadQuotedSkipPost, Esep,        ReadSkipPre,         { next_cell(); });
   TTS(ReadQuotedSkipPost, Enewline,    Start,               { next_cell(); end_row(); });
-  TTS(ReadQuotedSkipPost, Edos_cr,     ReadDosCR,           { next_cell(); end_row(); });
+  TTS(ReadQuotedSkipPost, Edos_cr,     ReadDosCR,           { next_cell(); });
   TTS(ReadQuotedSkipPost, Ewhitespace, ReadQuotedSkipPost,  {});
   TTS(ReadQuotedSkipPost, Echar,       ReadError,           { error_message = "char after endquote"; });
   TTS(ReadQuotedSkipPost, Ecomment,    ReadComment,         { next_cell(); end_row(); });
@@ -153,7 +153,7 @@ public:
   TTS(ReadUnquoted, Eqchar,      ReadError,              { error_message = "unexpected quote in unquoted string"; });
   TTS(ReadUnquoted, Esep,        ReadSkipPre,            { next_cell(); });
   TTS(ReadUnquoted, Enewline,    Start,                  { next_cell(); end_row(); });
-  TTS(ReadUnquoted, Edos_cr,     ReadDosCR,              { next_cell(); end_row(); });
+  TTS(ReadUnquoted, Edos_cr,     ReadDosCR,              { next_cell(); });
   TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(); });  // must remember whitespace in case its in the middle of the cell
   TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add_whitespace(); add(); });
   TTS(ReadUnquoted, Ecomment,    ReadComment,            { next_cell(); end_row(); });
@@ -163,7 +163,7 @@ public:
   TTS(ReadUnquotedWhitespace, Eqchar,      ReadError,                { error_message = "unexpected quote after unquoted string"; });
   TTS(ReadUnquotedWhitespace, Esep,        ReadSkipPre,              { add_unquoted_post_whitespace(); next_cell(); });
   TTS(ReadUnquotedWhitespace, Enewline,    Start,                    { add_unquoted_post_whitespace(); next_cell(); end_row(); });
-  TTS(ReadUnquotedWhitespace, Edos_cr,     ReadDosCR,                { add_unquoted_post_whitespace(); next_cell(); end_row(); });
+  TTS(ReadUnquotedWhitespace, Edos_cr,     ReadDosCR,                { add_unquoted_post_whitespace(); next_cell(); });
   TTS(ReadUnquotedWhitespace, Ewhitespace, ReadUnquotedWhitespace,   { remember_whitespace(); });
   TTS(ReadUnquotedWhitespace, Echar,       ReadUnquoted,             { add_whitespace(); add(); });
   TTS(ReadUnquotedWhitespace, Ecomment,    ReadComment,              { add_unquoted_post_whitespace(); next_cell(); end_row(); });
@@ -222,6 +222,7 @@ private:
 
   void begin_row()
   {
+     assert(row_open == false);
      cell_index = 0;
      row_open = true;
      out.begin_row();
@@ -231,6 +232,7 @@ private:
   // emits cell to builder and clears buffer
   void next_cell(bool has_content = true)
   {
+     assert(row_open == true);
      ++cell_index;
     if (has_content) {
       out.cell(cell.c_str(),cell.size());
@@ -243,6 +245,7 @@ private:
 
   void end_row()
   {
+     assert(row_open == true);
      cell_index = 0;
      row_open = false;
      out.end_row();
