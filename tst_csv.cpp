@@ -314,6 +314,72 @@ int main(int argc,char **argv)
 #endif
 }
 
+    printf("\n\n-- Test collapse separators (dont collapse) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,", false, false);
+  std::ifstream in("test_collapse_separators.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+}
+
+    printf("\n\n-- Test collapse separators (do collapse) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,", false, true);
+  std::ifstream in("test_collapse_separators.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\n", cp.error());
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+}
+
   do_test_again();
 
   return 0;

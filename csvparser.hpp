@@ -51,7 +51,7 @@ struct Edos_cr {};   // DOS carriage return
 
 
 struct Trans {
-  Trans(csv_builder &out, bool trim_whitespace) : value(0), error_message(NULL), out(out), trim_whitespace(trim_whitespace) {}
+  Trans(csv_builder &out, bool trim_whitespace, bool collapse_separators) : value(0), error_message(NULL), out(out), trim_whitespace(trim_whitespace), collapse_separators(collapse_separators) {}
 
   // this is set before the state change is called,
   // that way the Events do not need to carry their state with them.
@@ -81,7 +81,7 @@ struct Trans {
   TTS(ReadDosCR,    Echar,     ReadError, { error_message = "char after CR"; });
 
   TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   { active_qchar = value; drop_whitespace(); });   // we always want to forget whitespace before the quotes
-  TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { next_cell(false); });
+  TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { if (!collapse_separators) { next_cell(false); } });
   TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); out.end_row(); });
   TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); out.end_row(); });  // same as newline, except we expect to see newline next
   TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } });  // we MAY want to remember this whitespace
@@ -180,6 +180,7 @@ private:
   std::string cell;
   std::string whitespace_state;
   bool trim_whitespace;
+  bool collapse_separators;
 };
 
   template <class Event>
@@ -214,18 +215,19 @@ struct csvparser {
    // the standard says you should NOT trim, but many people would want to.
    // You can always quote the whitespace, and that will be kept
 
+// default constructor, gives you a parser for standards-compliant CSV
 csvparser(csv_builder &out)
  : errmsg(NULL),
-   trans(out, false)
+   trans(out, false, false)
 {
    add_char(qchar, '"');
    add_char(sep, ',');
 }
 
-csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false)
+csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
  : qchar(qchar),sep(sep),
    errmsg(NULL),
-   trans(out, trim_whitespace)
+   trans(out, trim_whitespace, collapse_separators)
 {}
   
   // NOTE: returns true on error
