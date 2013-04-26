@@ -280,6 +280,7 @@ struct csvparser {
 // default constructor, gives you a parser for standards-compliant CSV
 csvparser(csv_builder &out)
  : comment(0),
+   comments_must_be_at_start_of_line(true),
    errmsg(NULL),
    trans(out, false, false)
 {
@@ -291,6 +292,7 @@ csvparser(csv_builder &out)
 // constructor that was used before
 csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
  : qchar(qchar), sep(sep), comment(0),
+   comments_must_be_at_start_of_line(true),
    errmsg(NULL),
    trans(out, trim_whitespace, collapse_separators)
 {}
