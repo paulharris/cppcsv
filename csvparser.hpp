@@ -66,24 +66,24 @@ struct Trans {
     // note: states and events are just empty structs, so pass by copy should be faster
 #define TTS(State, Event, NextState, code) States on(State, Event) { code; return NextState(); }
   //  State          Event        Next_State    Transition_Action
-  TTS(Start,         Eqchar,      ReadQuoted,   { active_qchar = value; out.begin_row(); });
-  TTS(Start,         Esep,        ReadSkipPre,  { out.begin_row(); next_cell(false); });
-  TTS(Start,         Enewline,    Start,        { out.begin_row(); out.end_row(); });
+  TTS(Start,         Eqchar,      ReadQuoted,   { active_qchar = value; begin_row(); });
+  TTS(Start,         Esep,        ReadSkipPre,  { begin_row(); next_cell(false); });
+  TTS(Start,         Enewline,    Start,        { begin_row(); end_row(); });
   TTS(Start,         Edos_cr,     ReadDosCR,   {});
-  TTS(Start,         Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } out.begin_row(); });   // we MAY want to remember this whitespace
-  TTS(Start,         Echar,       ReadUnquoted, { out.begin_row(); add(); });
+  TTS(Start,         Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } begin_row(); });   // we MAY want to remember this whitespace
+  TTS(Start,         Echar,       ReadUnquoted, { begin_row(); add(); });
 
   TTS(ReadDosCR,    Eqchar,    ReadError, { error_message = "quote after CR"; });
   TTS(ReadDosCR,    Esep,      ReadError, { error_message = "sep after CR"; });
-  TTS(ReadDosCR,    Enewline,  Start,     { out.begin_row(); out.end_row(); });
+  TTS(ReadDosCR,    Enewline,  Start,     { begin_row(); end_row(); });
   TTS(ReadDosCR,    Edos_cr,   ReadError, { error_message = "CR after CR"; });
   TTS(ReadDosCR,    Ewhitespace, ReadError, { error_message = "whitespace after CR"; });
   TTS(ReadDosCR,    Echar,     ReadError, { error_message = "char after CR"; });
 
   TTS(ReadSkipPre,   Eqchar,      ReadQuoted,   { active_qchar = value; drop_whitespace(); });   // we always want to forget whitespace before the quotes
   TTS(ReadSkipPre,   Esep,        ReadSkipPre,  { if (!collapse_separators) { next_cell(false); } });
-  TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); out.end_row(); });
-  TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); out.end_row(); });  // same as newline, except we expect to see newline next
+  TTS(ReadSkipPre,   Enewline,    Start,        { next_cell(false); end_row(); });
+  TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); end_row(); });  // same as newline, except we expect to see newline next
   TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } });  // we MAY want to remember this whitespace
   TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add_whitespace(); add(); });   // we add whitespace IF any was recorded
 
@@ -96,29 +96,29 @@ struct Trans {
 
   TTS(ReadQuotedCheckEscape, Eqchar,      ReadQuoted,          { add(); });
   TTS(ReadQuotedCheckEscape, Esep,        ReadSkipPre,         { active_qchar = 0; next_cell(); });
-  TTS(ReadQuotedCheckEscape, Enewline,    Start,               { active_qchar = 0; next_cell(); out.end_row(); });
-  TTS(ReadQuotedCheckEscape, Edos_cr,     ReadDosCR,           { active_qchar = 0; next_cell(); out.end_row(); });
+  TTS(ReadQuotedCheckEscape, Enewline,    Start,               { active_qchar = 0; next_cell(); end_row(); });
+  TTS(ReadQuotedCheckEscape, Edos_cr,     ReadDosCR,           { active_qchar = 0; next_cell(); end_row(); });
   TTS(ReadQuotedCheckEscape, Ewhitespace, ReadQuotedSkipPost,  { active_qchar = 0; });
   TTS(ReadQuotedCheckEscape, Echar,       ReadError,           { error_message = "char after possible endquote"; });
 
   TTS(ReadQuotedSkipPost, Eqchar,      ReadError,           { error_message = "quote after endquote"; });
   TTS(ReadQuotedSkipPost, Esep,        ReadSkipPre,         { next_cell(); });
-  TTS(ReadQuotedSkipPost, Enewline,    Start,               { next_cell(); out.end_row(); });
-  TTS(ReadQuotedSkipPost, Edos_cr,     ReadDosCR,           { next_cell(); out.end_row(); });
+  TTS(ReadQuotedSkipPost, Enewline,    Start,               { next_cell(); end_row(); });
+  TTS(ReadQuotedSkipPost, Edos_cr,     ReadDosCR,           { next_cell(); end_row(); });
   TTS(ReadQuotedSkipPost, Ewhitespace, ReadQuotedSkipPost,  {});
   TTS(ReadQuotedSkipPost, Echar,       ReadError,           { error_message = "char after endquote"; });
 
   TTS(ReadUnquoted, Eqchar,      ReadError,              { error_message = "unexpected quote in unquoted string"; });
   TTS(ReadUnquoted, Esep,        ReadSkipPre,            { next_cell(); });
-  TTS(ReadUnquoted, Enewline,    Start,                  { next_cell(); out.end_row(); });
-  TTS(ReadUnquoted, Edos_cr,     ReadDosCR,              { next_cell(); out.end_row(); });
+  TTS(ReadUnquoted, Enewline,    Start,                  { next_cell(); end_row(); });
+  TTS(ReadUnquoted, Edos_cr,     ReadDosCR,              { next_cell(); end_row(); });
   TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(); });  // must remember whitespace in case its in the middle of the cell
   TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add_whitespace(); add(); });
 
   TTS(ReadUnquotedWhitespace, Eqchar,      ReadError,                { error_message = "unexpected quote after unquoted string"; });
   TTS(ReadUnquotedWhitespace, Esep,        ReadSkipPre,              { add_unquoted_post_whitespace(); next_cell(); });
-  TTS(ReadUnquotedWhitespace, Enewline,    Start,                    { add_unquoted_post_whitespace(); next_cell(); out.end_row(); });
-  TTS(ReadUnquotedWhitespace, Edos_cr,     ReadDosCR,                { add_unquoted_post_whitespace(); next_cell(); out.end_row(); });
+  TTS(ReadUnquotedWhitespace, Enewline,    Start,                    { add_unquoted_post_whitespace(); next_cell(); end_row(); });
+  TTS(ReadUnquotedWhitespace, Edos_cr,     ReadDosCR,                { add_unquoted_post_whitespace(); next_cell(); end_row(); });
   TTS(ReadUnquotedWhitespace, Ewhitespace, ReadUnquotedWhitespace,   { remember_whitespace(); });
   TTS(ReadUnquotedWhitespace, Echar,       ReadUnquoted,             { add_whitespace(); add(); });
 
@@ -164,6 +164,13 @@ private:
      whitespace_state.clear(); 
   }
 
+
+  void begin_row()
+  {
+     out.begin_row();
+  }
+
+
   // emits cell to builder and clears buffer
   void next_cell(bool has_content = true)
   {
@@ -174,6 +181,11 @@ private:
       out.cell(NULL,0);
     }
     cell.clear();
+  }
+
+  void end_row()
+  {
+     out.end_row();
   }
 
   csv_builder &out;
