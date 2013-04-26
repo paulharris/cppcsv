@@ -51,7 +51,7 @@ struct Edos_cr {};   // DOS carriage return
 
 
 struct Trans {
-  Trans(csv_builder &out, bool trim_whitespace, bool collapse_separators) : value(0), error_message(NULL), out(out), trim_whitespace(trim_whitespace), collapse_separators(collapse_separators) {}
+  Trans(csv_builder &out, bool trim_whitespace, bool collapse_separators) : value(0), active_qchar(0), error_message(NULL), out(out), trim_whitespace(trim_whitespace), collapse_separators(collapse_separators) {}
 
   // this is set before the state change is called,
   // that way the Events do not need to carry their state with them.
