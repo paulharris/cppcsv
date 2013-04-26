@@ -334,7 +334,8 @@ bool operator()(const char *&buf,int len)
        process_event(Ecomment());
     }
 
-    else if (match_char(' '))       process_event(Ewhitespace());
+    else if (match_char(' '))       process_event(Ewhitespace()); // check space
+    else if (match_char('\t'))      process_event(Ewhitespace()); // check tab
     else                            process_event(Echar());
 
     if (trans.error_message) {
