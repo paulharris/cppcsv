@@ -1,11 +1,13 @@
-#include <stdio.h>
-#include <assert.h>
-#include <fstream>
 #include "csvparser.hpp"
 #include "csvwriter.h"
 #include "simplecsv.h"
 
-#define PRINT_OUT 0
+#include <stdio.h>
+#include <assert.h>
+#include <fstream>
+#include <boost/array.hpp>
+
+#define PRINT_OUT 2
 
 using cppcsv::csv_builder;
 using cppcsv::csvparser;
@@ -721,7 +723,7 @@ int main(int argc,char **argv)
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser<> cp(dbg);
+  cppcsv::csvparser_standard cp(dbg);
   std::ifstream in("test_no_last_newline.csv");
 
   in.seekg (0, in.end);
@@ -759,7 +761,7 @@ int main(int argc,char **argv)
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser<> cp(dbg);
+  cppcsv::csvparser_standard cp(dbg);
   std::ifstream in("test_no_last_newline.csv");
 
   in.seekg (0, in.end);
@@ -773,6 +775,48 @@ int main(int argc,char **argv)
      if (cp.process_chunk(cursor, length))
         printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
      cp.flush();
+  }
+
+#if (PRINT_OUT==1)
+  csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
+  tbl.write(dbg2);
+#endif
+
+  delete[] buffer;
+}
+
+
+    printf("\n\n-- Test fixed-number-of-multiple quotes (SUCCESS) ---\n\n");
+
+{
+#if (PRINT_OUT==1)
+  SimpleCSV::Table tbl;
+  SimpleCSV::builder dbg(tbl);
+#elif (PRINT_OUT==2)
+  debug_builder dbg;
+#else
+   null_builder dbg;
+#endif
+
+  // use a boost array instead of a string
+  // this should allow the compiler to unroll all of match_char loops completely
+  typedef boost::array<char,2> Arr;
+  Arr quotes = { '"', '\'' };
+  Arr seps   = { ';', ',' };
+
+  cppcsv::csvparser<Arr,Arr> cp(dbg, quotes, seps);
+  std::ifstream in("test_multiple_quotes.csv");
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
   }
 
 #if (PRINT_OUT==1)

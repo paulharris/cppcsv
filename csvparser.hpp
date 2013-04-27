@@ -7,6 +7,8 @@
 #include <string.h>
 #include "csvbase.h"
 
+#include <boost/range/algorithm/find.hpp>
+#include <boost/range/end.hpp>
 #include <boost/utility.hpp>
 #include <boost/variant.hpp>
 
@@ -69,11 +71,11 @@ struct Trans {
 
   // this is set before the state change is called,
   // that way the Events do not need to carry their state with them.
-  unsigned char value;
+  char value;
 
   // active quote character, required in the situation where multiple quote chars are possible
   // if =0 then there is no active_qchar
-  unsigned char active_qchar;
+  char active_qchar;
 
 private:
   // keeps a count of the number of cells emitted in this row
@@ -296,10 +298,18 @@ private:
 } // namespace csvFSM
 
 
-// has template so users can specify either string (multiples of)
-// or char (single quote/separator)
+// has template so users can specify either:
+// * char (single quote/separator)
+// * std::string (any number of)
+// * boost::array<char,N> (exactly N possibles - should be faster for comparisons)
+// * whatever! as long as we can call find(begin(X), end(X), char) so ADL might help
+//   to resolve a custom begin/end/find.
+//
+// Note that I do not bother with unsigned-char, as even UTF-8 will work fine with
+// the char type.
+// If you use unsigned char in the template parameters, its likely that it won't
+// compile as the templated functions are looking for a char, or assuming a 'container'.
 
-// so only use either string or char as the template parameters!
 template <class QuoteChars = char, class Separators = char, class CommentChars = char>
 struct csvparser {
 
@@ -308,21 +318,6 @@ struct csvparser {
    // trim_whitespace: remove whitespace around unquoted cells
    // the standard says you should NOT trim, but many people would want to.
    // You can always quote the whitespace, and that will be kept
-
-// default constructor, gives you a parser for standards-compliant CSV
-csvparser(csv_builder &out)
- : comment(0),
-   comments_must_be_at_start_of_line(true),
-   collect_error_context(false),
-   errmsg(NULL),
-   trans(out, false, false)
-{
-   add_char(qchar, '"');
-   add_char(sep, ',');
-   // no comment-chars
-
-   reset_cursor_location();
-}
 
 // constructor that was used before
 csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
@@ -459,16 +454,17 @@ private:
   csvFSM::Trans trans;
 
   // support either single or multiple quote characters
-  bool is_quote_char( char qchar ) const
+  bool is_quote_char( char the_qchar ) const
   {
-    return match_char(qchar);
+    return match_char(the_qchar);
   }
 
-  bool is_quote_char( std::string const& qchar ) const
+  template <class Container>
+  bool is_quote_char( Container const& the_qchar ) const
   {
     if (trans.active_qchar != 0)
        return match_char(trans.active_qchar);
-    return match_char(qchar);
+    return match_char(the_qchar);
   }
 
   // support either a single char or a string of chars
@@ -478,14 +474,12 @@ private:
      return target != 0 && target == trans.value;
   }
 
-  bool match_char( std::string const& target ) const {
-    return target.find_first_of(trans.value) != std::string::npos;
+  template <class Container>
+  bool match_char( Container const& target ) const {
+    using boost::range::find;
+    using boost::end;
+    return find(target, trans.value) != end(target);
   }
-
-
-   // helpers for setting up the separator/quote/comment chars
-   static void add_char( char & target, char src )        { target = src; }
-   static void add_char( std::string & target, char src ) { target.push_back(src); }
 
 
    // finds the next state, performs transition activity, sets the new state
@@ -493,6 +487,14 @@ private:
    void process_event( Event event ) {
      state = boost::apply_visitor( csvFSM::NextState<Event>(trans), state);
    }
+};
+
+
+struct csvparser_standard : public csvparser<>
+{
+  csvparser_standard( csv_builder & out ) : csvparser<>(out, '"', ',', false, false)
+  {
+  }
 };
 
 
