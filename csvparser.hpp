@@ -311,7 +311,7 @@ private:
 // compile as the templated functions are looking for a char, or assuming a 'container'.
 
 template <class QuoteChars = char, class Separators = char, class CommentChars = char>
-struct csvparser {
+struct csvparser : boost::noncopyable {
 
    unsigned int current_row, current_column; // keeps track of where we are upto in the file
 
