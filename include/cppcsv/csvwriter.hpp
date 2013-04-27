@@ -1,6 +1,6 @@
 #pragma once
 
-#include "csvbase.h"
+#include "csvbase.hpp"
 
 namespace cppcsv {
 

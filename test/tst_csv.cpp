@@ -1,9 +1,9 @@
-#include "csvparser.hpp"
-#include "csvwriter.h"
-#include "simplecsv.h"
+#include <cppcsv/csvparser.hpp>
+#include <cppcsv/csvwriter.hpp>
+#include <cppcsv/simplecsv.hpp>
 
-#include <stdio.h>
-#include <assert.h>
+#include <cstdio>
+#include <cassert>
 #include <fstream>
 #include <boost/array.hpp>
 

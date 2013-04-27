@@ -2,12 +2,11 @@
 
 #include <map>
 #include <vector>
-#include "nocase.h"
-#include "csvbase.h"
+#include "nocase.hpp"
+#include "csvbase.hpp"
 
+namespace cppcsv {
 namespace SimpleCSV {
-
-   using cppcsv::csv_builder;
 
 class Table;
 class Row;
@@ -110,3 +109,4 @@ private:
 };
 
 } // namespace SimpleCSV
+}

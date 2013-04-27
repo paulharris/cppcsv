@@ -3,19 +3,18 @@
 //
 // License: http://opensource.org/licenses/MIT
 
-#include <assert.h>
-#include <string.h>
-#include "csvbase.h"
+#include <cassert>
+#include "csvbase.hpp"
 
 #include <boost/range/algorithm/find.hpp>
 #include <boost/range/end.hpp>
 #include <boost/utility.hpp>
 #include <boost/variant.hpp>
 
-//#define DEBUG
+#define CPPCSV_DEBUG 0
 
-#ifdef DEBUG
-  #include <stdio.h>
+#if CPPCSV_DEBUG
+  #include <cstdio>
   #include <typeinfo>
 #endif
 
@@ -284,7 +283,7 @@ private:
     // note: states are just empty structs, so pass by copy should be faster
     template <class State>
     States operator()(State s) const {
-#ifdef DEBUG
+#if CPPCSV_DEBUG
   printf("%s %c (%d)\n",typeid(State).name(), t.value, (int)t.value);
 #endif
       return t.on(s,Event());
@@ -410,7 +409,7 @@ bool process_chunk(const char *&buf, const int len)
     else                            process_event(Echar());
 
     if (trans.error_message) {
-#ifdef DEBUG
+#if CPPCSV_DEBUG
        fprintf(stderr, "State index: %d\n", state.which());
        fprintf(stderr,"csv parse error: %s\n",error());
 #endif

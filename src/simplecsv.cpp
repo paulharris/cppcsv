@@ -1,9 +1,10 @@
-#include "simplecsv.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cppcsv/simplecsv.hpp>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
 #include <stdexcept>
 
+namespace cppcsv {
 namespace SimpleCSV {
 
 const std::string Row::del;
@@ -312,7 +313,6 @@ void builder::end_row() // {{{
     as_header=false;
   }
 }
-// }}}
 
 } // namespace SimpleCSV
-
+}
