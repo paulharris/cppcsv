@@ -6,6 +6,9 @@
 #include <cassert>
 #include "csvbase.hpp"
 
+#include <string>
+#include <vector>
+
 #include <boost/range/algorithm/find.hpp>
 #include <boost/range/end.hpp>
 #include <boost/utility.hpp>
@@ -56,8 +59,9 @@ struct Edos_cr {};   // DOS carriage return
 struct Ecomment {};
 
 
+template <class CsvBuilder>
 struct Trans {
-  Trans(csv_builder &out, bool trim_whitespace, bool collapse_separators ) :
+  Trans(CsvBuilder &out, bool trim_whitespace, bool collapse_separators ) :
      value(0),
      active_qchar(0),
      row_open(false),
@@ -79,9 +83,40 @@ private:
   // used for flush(), to check if we should push through one last newline
   bool row_open;
 
+
+  template <class Event>
+  struct NextState : boost::static_visitor<States> {
+    NextState(Trans &t) : t(t) {}
+
+    // note: states are just empty structs, so pass by copy should be faster
+    template <class State>
+    States operator()(State s) const {
+#if CPPCSV_DEBUG
+  printf("%s %c (%d)\n",typeid(State).name(), t.value, (int)t.value);
+#endif
+      return t.on(s,Event());
+    }
+
+  private:
+    Trans &t;
+  };
+
+
 public:
+   // finds the next state, performs transition activity, sets the new state
+  template <class State, class Event>
+  States process_event( State state, Event event ) {
+    return boost::apply_visitor( NextState<Event>(*this), state);
+  }
+
+
   bool row_empty() const {
-     return cell.empty() && whitespace_state.empty();
+     return cells_buffer.empty() && whitespace_state.empty();
+  }
+
+  unsigned int last_cell_length() const {
+     assert(!cell_offsets.empty());
+     return cells_buffer.size() - cell_offsets.back();
   }
 
   bool is_row_open() const {
@@ -93,7 +128,7 @@ public:
     // note: states and events are just empty structs, so pass by copy should be faster
 
   // for defining a state transition with code
-#define TTS(State, Event, NextState, code) States on(State, Event) { code; return NextState(); }
+#define TTS(State, Event, TargetState, code) States on(State, Event) { code; return TargetState(); }
 
   // for defining a transition that redirects to another Event handler for this state
 #define REDIRECT(State, Event, OtherEvent) States on(State state, Event) { return on(state,OtherEvent()); }
@@ -121,7 +156,7 @@ public:
   TTS(ReadSkipPre,   Edos_cr,     ReadDosCR,    { next_cell(false); });  // same as newline, except we expect to see newline next
   TTS(ReadSkipPre,   Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } });  // we MAY want to remember this whitespace
   TTS(ReadSkipPre,   Echar,       ReadUnquoted, { add_whitespace(); add(); });   // we add whitespace IF any was recorded
-  TTS(ReadSkipPre,   Ecomment,    ReadComment,  { add_whitespace(); if (!cell.empty()) { next_cell(true); } end_row(); } );   // IF there was anything, then emit a cell else completely ignore the current cell (ie do not emit a null)
+  TTS(ReadSkipPre,   Ecomment,    ReadComment,  { add_whitespace(); if (last_cell_length() != 0) { next_cell(true); } end_row(); } );   // IF there was anything, then emit a cell else completely ignore the current cell (ie do not emit a null)
 
   TTS(ReadQuoted,    Eqchar,      ReadQuotedCheckEscape, {});
   TTS(ReadQuoted,    Edos_cr,     ReadQuotedDosCR,       {});  // do not add, we translate \r\n to \n, even within quotes
@@ -200,7 +235,7 @@ private:
   // adds current character to cell buffer
   void add()
   {
-     cell.push_back(value);
+     cells_buffer.push_back(value);
   }
 
   // whitespace is remembered until we know if we need to add to the output or forget
@@ -212,7 +247,7 @@ private:
   // adds remembered whitespace to cell buffer
   void add_whitespace()
   {
-     cell.append(whitespace_state);
+     cells_buffer.append(whitespace_state);
      drop_whitespace();
   }
 
@@ -220,7 +255,7 @@ private:
   void add_unquoted_post_whitespace()
   {
      if (!trim_whitespace)
-        cell.append(whitespace_state);
+        cells_buffer.append(whitespace_state);
      drop_whitespace();
   }
 
@@ -232,55 +267,46 @@ private:
 
   void begin_row()
   {
-     assert(row_open == false);
-     row_open = true;
+     assert(cell_offsets.empty());
+     cell_offsets.push_back(0);
      out.begin_row();
   }
 
 
-  // emits cell to builder and clears buffer
+  // adds an entry to the offsets set
   void next_cell(bool has_content = true)
   {
-     assert(row_open == true);
+    assert(!cell_offsets.empty());
+    const unsigned int start_off = cell_offsets.back();
+    const unsigned int end_off = cells_buffer.size();
+
+    cell_offsets.push_back(end_off);
+
     if (has_content) {
-      out.cell(cell.c_str(),cell.size());
+      const char* base = cells_buffer.c_str();
+      out.cell( base+start_off, end_off-start_off );
     } else {
-      assert(cell.empty());
+      assert(start_off == end_off);
+      assert(last_cell_length() == 0);
       out.cell(NULL,0);
     }
-    cell.clear();
   }
 
   void end_row()
   {
-     assert(row_open == true);
-     row_open = false;
-     out.end_row();
+     assert(!cell_offsets.empty());
+     out.end_full_row( cells_buffer.c_str(), &cell_offsets[0], cell_offsets.size()-1 );
+     cell_offsets.clear();
+     cells_buffer.clear();
   }
 
-  csv_builder &out;
-  std::string cell;
+  CsvBuilder &out;
+  std::string cells_buffer;
+  std::vector<unsigned int> cell_offsets;
   std::string whitespace_state;
   bool trim_whitespace;
   bool collapse_separators;
 };
-
-  template <class Event>
-  struct NextState : boost::static_visitor<States> {
-    NextState(Trans &t) : t(t) {}
-
-    // note: states are just empty structs, so pass by copy should be faster
-    template <class State>
-    States operator()(State s) const {
-#if CPPCSV_DEBUG
-  printf("%s %c (%d)\n",typeid(State).name(), t.value, (int)t.value);
-#endif
-      return t.on(s,Event());
-    }
-
-  private:
-    Trans &t;
-  };
 
 
 } // namespace csvFSM
@@ -298,8 +324,10 @@ private:
 // If you use unsigned char in the template parameters, its likely that it won't
 // compile as the templated functions are looking for a char, or assuming a 'container'.
 
-template <class QuoteChars = char, class Separators = char, class CommentChars = char>
+template <class QuoteChars = char, class Separators = char, class CommentChars = char, class CsvBuilder = csv_builder>
 struct csvparser : boost::noncopyable {
+
+   typedef csvFSM::Trans<CsvBuilder> MyTrans;
 
    unsigned int current_row, current_column; // keeps track of where we are upto in the file
 
@@ -308,7 +336,7 @@ struct csvparser : boost::noncopyable {
    // You can always quote the whitespace, and that will be kept
 
 // constructor that was used before
-csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
+csvparser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
  : qchar(qchar), sep(sep), comment(0),
    comments_must_be_at_start_of_line(true),
    collect_error_context(false),
@@ -321,7 +349,7 @@ csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespa
 
 // constructor with everything
 // note: collect_error_context adds a small amount of overhead
-csvparser(csv_builder &out, QuoteChars qchar, Separators sep, bool trim_whitespace, bool collapse_separators, CommentChars comment, bool comments_must_be_at_start_of_line, bool collect_error_context = false)
+csvparser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespace, bool collapse_separators, CommentChars comment, bool comments_must_be_at_start_of_line, bool collect_error_context = false)
  : qchar(qchar), sep(sep), comment(comment),
    comments_must_be_at_start_of_line(comments_must_be_at_start_of_line),
    errmsg(NULL),
@@ -439,7 +467,7 @@ private:
   std::string current_row_content;  // remember what we read for error printouts
 
   csvFSM::States state;
-  csvFSM::Trans trans;
+  MyTrans trans;
 
   // support either single or multiple quote characters
   bool is_quote_char( char the_qchar ) const
@@ -473,7 +501,7 @@ private:
    // finds the next state, performs transition activity, sets the new state
    template <class Event>
    void process_event( Event event ) {
-     state = boost::apply_visitor( csvFSM::NextState<Event>(trans), state);
+     state = trans.process_event(state, event);
    }
 };
 

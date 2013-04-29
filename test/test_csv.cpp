@@ -61,6 +61,52 @@ private:
   FILE *f;
 };
 
+
+
+// for testing function row interface
+static void print_bulk_row( const char* buffer, const unsigned int * offsets, unsigned int num_cells )
+{
+  printf("ROW (%u cells): ", num_cells);
+  for (unsigned int i = 0; i != num_cells; ++i) {
+    const char* cell_buffer = buffer + offsets[i];
+    unsigned int len = (offsets[i+1] - offsets[i]);
+
+    if (len == 0) {
+      printf("(null) ");
+    } else {
+      printf("[%.*s] ",len, cell_buffer);
+    }
+  }
+  printf("\n");
+}
+
+
+
+// for testing functor row interface
+struct print_bulk_row_t
+{
+  void begin_row() {}   // does nothing
+  void cell( const char *buf, int len ) {}   // does nothing
+
+  void end_full_row( const char* buffer, const unsigned int * offsets, unsigned int num_cells )
+  {
+    printf("ROW (%u cells): ", num_cells);
+    for (unsigned int i = 0; i != num_cells; ++i) {
+      const char* cell_buffer = buffer + offsets[i];
+      unsigned int len = (offsets[i+1] - offsets[i]);
+
+      if (len == 0) {
+        printf("(null) ");
+      } else {
+        printf("[%.*s] ",len, cell_buffer);
+      }
+    }
+    printf("\n");
+  }
+};
+
+
+
 int main(int argc,char **argv)
 {
 //  debug_builder dbg;
@@ -853,6 +899,67 @@ int main(int argc,char **argv)
   csv_writer<file_out> dbg2(file_out(stdout),'\'',',',true);
   tbl.write(dbg2);
 #endif
+
+  delete[] buffer;
+}
+
+
+    printf("\n\n-- Test per-row bulk interface, with function ---\n\n");
+
+{
+  // use a boost array instead of a string
+  // this should allow the compiler to unroll all of match_char loops completely
+  typedef boost::array<char,2> Arr;
+  Arr quotes = { '"', '\'' };
+  Arr seps   = { ';', ',' };
+
+  typedef cppcsv::csv_builder_bulk<void (*)(const char*, const unsigned int*, unsigned int)> Builder;
+  Builder builder(print_bulk_row);
+  cppcsv::csvparser<Arr,Arr,char,Builder> cp(builder, quotes, seps);
+  std::ifstream in("test_multiple_quotes.csv");
+  check(in);
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
+  }
+
+  delete[] buffer;
+}
+
+
+    printf("\n\n-- Test per-row bulk interface, with functor ---\n\n");
+
+{
+  // use a boost array instead of a string
+  // this should allow the compiler to unroll all of match_char loops completely
+  typedef boost::array<char,2> Arr;
+  Arr quotes = { '"', '\'' };
+  Arr seps   = { ';', ',' };
+
+  print_bulk_row_t builder;
+  cppcsv::csvparser<Arr,Arr,char,print_bulk_row_t> cp(builder, quotes, seps);
+  std::ifstream in("test_multiple_quotes.csv");
+  check(in);
+
+  in.seekg (0, in.end);
+  int length = in.tellg();
+  in.seekg (0, in.beg);
+  char * buffer = new char[length];
+  in.read(buffer, length);
+  if (in)
+  {
+     const char* cursor = buffer;
+     if (cp(cursor, length))
+        printf("ERROR: %s\nContext:\n%s\n", cp.error(), cp.error_context().c_str());
+  }
 
   delete[] buffer;
 }
