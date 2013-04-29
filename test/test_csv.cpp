@@ -18,6 +18,16 @@ using cppcsv::csv_writer;
 // multiple compile units without problems.
 void do_test_again();
 
+void check( std::istream & in )
+{
+   if (!in)
+   {
+      printf("Could not open file");
+      exit(1);
+   }
+}
+
+
 class debug_builder : public csv_builder {
 public:
   virtual void begin_row() {
@@ -99,6 +109,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test_dos.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -138,6 +149,7 @@ int main(int argc,char **argv)
   cppcsv::csvparser<char,char> cp_dos(dbg_dos,'"',',');
 
   std::ifstream in("test_dos.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -178,6 +190,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -214,6 +227,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg,'"',',',true);
   std::ifstream in("test.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -249,6 +263,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test_bad_separator.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -284,6 +299,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test_bad_dos.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -321,6 +337,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg,'"',',');
   std::ifstream in("test_multiple_quotes.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -356,6 +373,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,");
   std::ifstream in("test_multiple_quotes.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -391,6 +409,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,", false, false);
   std::ifstream in("test_collapse_separators.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -426,6 +445,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,", false, true);
   std::ifstream in("test_collapse_separators.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -463,6 +483,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', true, true);
   std::ifstream in("test_comment.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -500,6 +521,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg, '"', ',', true, true, '#', true);
   std::ifstream in("test_comment.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -537,6 +559,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', false);
   std::ifstream in("test_comment.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -574,6 +597,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char> cp(dbg, '"', ',', true, true, '#', false);
   std::ifstream in("test_comment.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -611,6 +635,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<char,char,std::string> cp(dbg, '"', ',', true, true, "!#", false);
   std::ifstream in("test_comment.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -649,6 +674,7 @@ int main(int argc,char **argv)
    // trim whitespace, Don't collapse separators
   cppcsv::csvparser<char,std::string> cp(dbg, '"', "\t ", true, false);
   std::ifstream in("test_whitespace_sep.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -687,6 +713,7 @@ int main(int argc,char **argv)
    // trim whitespace, collapse separators
   cppcsv::csvparser<char,std::string> cp(dbg, '"', "\t ", true, true);
   std::ifstream in("test_whitespace_sep.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -725,6 +752,7 @@ int main(int argc,char **argv)
    // trim whitespace, collapse separators
   cppcsv::csvparser_standard cp(dbg);
   std::ifstream in("test_no_last_newline.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -763,6 +791,7 @@ int main(int argc,char **argv)
    // trim whitespace, collapse separators
   cppcsv::csvparser_standard cp(dbg);
   std::ifstream in("test_no_last_newline.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -806,6 +835,7 @@ int main(int argc,char **argv)
 
   cppcsv::csvparser<Arr,Arr> cp(dbg, quotes, seps);
   std::ifstream in("test_multiple_quotes.csv");
+  check(in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
