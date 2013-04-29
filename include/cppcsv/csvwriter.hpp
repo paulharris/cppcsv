@@ -55,6 +55,16 @@ public:
   }
 private:
   bool need_quote(const char *buf,int len) const {
+    // check for leading/trailing whitespace
+    if (len > 0) {
+      if (   (*buf == ' ')
+          || (*buf == '\t')
+          || (*(buf+len-1) == ' ')
+          || (*(buf+len-1) == '\t')) {
+        return true;
+      }
+    }
+
     while (len>0) {
       if ( (*buf==qchar)||(*buf==sep)||(*buf=='\n') ) {
         return true;
