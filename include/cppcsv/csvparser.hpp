@@ -140,7 +140,7 @@ public:
   TTS(Start,         Edos_cr,     ReadDosCR,   {});
   TTS(Start,         Ewhitespace, ReadSkipPre,  { if (!trim_whitespace) { remember_whitespace(); } begin_row(); });   // we MAY want to remember this whitespace
   TTS(Start,         Echar,       ReadUnquoted, { begin_row(); add(); });
-  TTS(Start,         Ecomment,    ReadComment,  { begin_row(); end_row(); });  // comment at the start of the line --> everything discarded but blank row still generated
+  TTS(Start,         Ecomment,    ReadComment,  {});  // comment at the start of the line --> everything discarded, no blank row is generated
 
   TTS(ReadDosCR,    Eqchar,    ReadError, { error_message = "quote after CR"; });
   TTS(ReadDosCR,    Esep,      ReadError, { error_message = "sep after CR"; });
