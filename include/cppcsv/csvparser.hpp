@@ -470,7 +470,7 @@ bool flush()
   const char * error() const { return trans.error_message; }
 
   std::string error_context() const {
-     return current_row_content + "\n" + std::string(current_column-1,'-') + "^\n";
+     return current_row_content + "\n" + std::string(current_column-1,'-') + "^";
   }
 
 private:
