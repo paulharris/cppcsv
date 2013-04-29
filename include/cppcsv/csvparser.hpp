@@ -60,7 +60,6 @@ struct Trans {
   Trans(csv_builder &out, bool trim_whitespace, bool collapse_separators ) :
      value(0),
      active_qchar(0),
-     cell_index(0),
      row_open(false),
      error_message(NULL),
      out(out),
@@ -77,19 +76,12 @@ struct Trans {
   char active_qchar;
 
 private:
-  // keeps a count of the number of cells emitted in this row
-  // this is used to help with the comments support.
-  // IF we only allow comments at the start of the line, then
-  // the character-feeder will only emit a Ecomment event when
-  // the cell_index == 0
-  unsigned int cell_index;
-
   // used for flush(), to check if we should push through one last newline
   bool row_open;
 
 public:
   bool row_empty() const {
-     return cell_index == 0 && cell.empty() && whitespace_state.empty();
+     return cell.empty() && whitespace_state.empty();
   }
 
   bool is_row_open() const {
@@ -241,7 +233,6 @@ private:
   void begin_row()
   {
      assert(row_open == false);
-     cell_index = 0;
      row_open = true;
      out.begin_row();
   }
@@ -251,7 +242,6 @@ private:
   void next_cell(bool has_content = true)
   {
      assert(row_open == true);
-     ++cell_index;
     if (has_content) {
       out.cell(cell.c_str(),cell.size());
     } else {
@@ -264,7 +254,6 @@ private:
   void end_row()
   {
      assert(row_open == true);
-     cell_index = 0;
      row_open = false;
      out.end_row();
   }
