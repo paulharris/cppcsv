@@ -63,6 +63,7 @@ template <class CsvBuilder>
 struct Trans {
   Trans(CsvBuilder &out, bool trim_whitespace, bool collapse_separators ) :
      value(0),
+     row_file_start_row(0),
      active_qchar(0),
      row_open(false),
      error_message(NULL),
@@ -74,6 +75,8 @@ struct Trans {
   // this is set before the state change is called,
   // that way the Events do not need to carry their state with them.
   char value;
+
+  unsigned int row_file_start_row;      // first file row for this row
 
   // active quote character, required in the situation where multiple quote chars are possible
   // if =0 then there is no active_qchar
@@ -283,7 +286,8 @@ private:
     cell_offsets.push_back(end_off);
 
     if (has_content) {
-      const char* base = cells_buffer.c_str();
+      assert(!cells_buffer.empty());
+      char* base = &cells_buffer[0];
       out.cell( base+start_off, end_off-start_off );
     } else {
       assert(start_off == end_off);
@@ -295,7 +299,18 @@ private:
   void end_row()
   {
      assert(!cell_offsets.empty());
-     out.end_full_row( cells_buffer.c_str(), &cell_offsets[0], cell_offsets.size()-1 );
+
+     // give client a NON-CONST buffer
+     // so they can modify in-place for better efficiency
+     char * buffer = (cells_buffer.empty() ? NULL : &cells_buffer[0]);
+
+     out.end_full_row(
+           buffer,                  // buffer
+           cell_offsets.size()-1,   // num cells
+           &cell_offsets[0],        // offsets
+           row_file_start_row       // first file row for this row
+           );
+
      cell_offsets.clear();
      cells_buffer.clear();
   }
@@ -339,8 +354,8 @@ struct csvparser : boost::noncopyable {
 csvparser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
  : qchar(qchar), sep(sep), comment(0),
    comments_must_be_at_start_of_line(true),
-   collect_error_context(false),
    errmsg(NULL),
+   collect_error_context(false),
    trans(out, trim_whitespace, collapse_separators)
 {
    reset_cursor_location();
@@ -377,6 +392,7 @@ void reset_cursor_location()
 {
    current_row = 1;     // start at one, as we post-increment
    current_column = 0;  // start at zero, as we pre-increment
+   trans.row_file_start_row = current_row;
 }
 
 
@@ -404,6 +420,7 @@ bool process_chunk(const char *&buf, const int len)
          if (match_char('\r'))      process_event(Edos_cr());
 
     else if (match_char('\n'))      {
+       trans.row_file_start_row = current_row;
        process_event(Enewline());
        if (collect_error_context)
           current_row_content.clear();

@@ -15,7 +15,12 @@ public:
   // DO NOT OVERRIDE, this is an
   // Optional interface that csvparser supports,
   // but other existing csv_builder clients do not.
-  void end_full_row( const char* buffer, const unsigned int * offsets, unsigned int num_cells )
+  void end_full_row(
+        char* buffer,
+        unsigned int num_cells,
+        const unsigned int * offsets,  // array[num_cells+1]
+        unsigned int file_row          // row where these cells started
+        )
   {
      this->end_row();
   }
@@ -25,6 +30,8 @@ public:
 // This adaptor allows you to use csvparser on a emit-per-row basis
 // The function attached will be called once per row.
 // This is NOT designed to be inherited from.
+//
+// Note, the cell() and end_full_row() accepts non-const buffer :)
 
 template <class Function>
 class csv_builder_bulk {
@@ -34,14 +41,19 @@ public:
   csv_builder_bulk(Function func) : function(func) {}
 
   void begin_row() {}   // does nothing
-  void cell( const char *buf, int len ) {}   // does nothing
+  void cell( char *buf, int len ) {}   // does nothing
 
   // this calls the attached function
   // note that there is (num_cells+1) offsets,
   // the last offset is the one-past-the-end index of the last cell
-  void end_full_row( const char* buffer, const unsigned int * offsets, unsigned int num_cells )
+  void end_full_row(
+        char* buffer,
+        unsigned int num_cells,
+        const unsigned int * offsets, // array[num_cells+1]
+        unsigned int file_row          // row where these cells started
+        )
   {
-    function(buffer, offsets, num_cells);
+    function(buffer, num_cells, offsets, file_row);
   }
 };
 

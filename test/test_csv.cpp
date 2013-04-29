@@ -64,9 +64,9 @@ private:
 
 
 // for testing function row interface
-static void print_bulk_row( const char* buffer, const unsigned int * offsets, unsigned int num_cells )
+static void print_bulk_row( const char* buffer, unsigned int num_cells, const unsigned int * offsets, unsigned int file_row )
 {
-  printf("ROW (%u cells): ", num_cells);
+  printf("ROW %u (%u cells): ", file_row, num_cells);
   for (unsigned int i = 0; i != num_cells; ++i) {
     const char* cell_buffer = buffer + offsets[i];
     unsigned int len = (offsets[i+1] - offsets[i]);
@@ -88,9 +88,9 @@ struct print_bulk_row_t
   void begin_row() {}   // does nothing
   void cell( const char *buf, int len ) {}   // does nothing
 
-  void end_full_row( const char* buffer, const unsigned int * offsets, unsigned int num_cells )
+  void end_full_row( const char* buffer, unsigned int num_cells, const unsigned int * offsets, unsigned int file_row )
   {
-    printf("ROW (%u cells): ", num_cells);
+    printf("ROW %u (%u cells): ", file_row, num_cells);
     for (unsigned int i = 0; i != num_cells; ++i) {
       const char* cell_buffer = buffer + offsets[i];
       unsigned int len = (offsets[i+1] - offsets[i]);
@@ -527,7 +527,7 @@ int main(int argc,char **argv)
    null_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', true, true);
+  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', true);
   std::ifstream in("test_comment.csv");
   check(in);
 
@@ -913,7 +913,7 @@ int main(int argc,char **argv)
   Arr quotes = { '"', '\'' };
   Arr seps   = { ';', ',' };
 
-  typedef cppcsv::csv_builder_bulk<void (*)(const char*, const unsigned int*, unsigned int)> Builder;
+  typedef cppcsv::csv_builder_bulk<void (*)(const char*, unsigned int, const unsigned int*, unsigned int)> Builder;
   Builder builder(print_bulk_row);
   cppcsv::csvparser<Arr,Arr,char,Builder> cp(builder, quotes, seps);
   std::ifstream in("test_multiple_quotes.csv");
