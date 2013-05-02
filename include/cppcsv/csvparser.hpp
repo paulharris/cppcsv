@@ -65,7 +65,6 @@ struct Trans {
      value(0),
      row_file_start_row(0),
      active_qchar(0),
-     row_open(false),
      error_message(NULL),
      out(out),
      trim_whitespace(trim_whitespace),
@@ -83,10 +82,6 @@ struct Trans {
   char active_qchar;
 
 private:
-  // used for flush(), to check if we should push through one last newline
-  bool row_open;
-
-
   template <class Event>
   struct NextState : boost::static_visitor<States> {
     NextState(Trans &t) : t(t) {}
@@ -118,12 +113,12 @@ public:
   }
 
   unsigned int last_cell_length() const {
-     assert(!cell_offsets.empty());
+     assert(is_row_open());
      return cells_buffer.size() - cell_offsets.back();
   }
 
   bool is_row_open() const {
-     return row_open;
+     return !cell_offsets.empty();
   }
 
   const char* error_message;
@@ -147,7 +142,7 @@ public:
 
   TTS(ReadDosCR,    Eqchar,    ReadError, { error_message = "quote after CR"; });
   TTS(ReadDosCR,    Esep,      ReadError, { error_message = "sep after CR"; });
-  TTS(ReadDosCR,    Enewline,  Start,     { end_row(); });
+  TTS(ReadDosCR,    Enewline,  Start,     { if (is_row_open()) { end_row(); } });
   TTS(ReadDosCR,    Edos_cr,   ReadError, { error_message = "CR after CR"; });
   TTS(ReadDosCR,    Ewhitespace, ReadError, { error_message = "whitespace after CR"; });
   TTS(ReadDosCR,    Echar,     ReadError, { error_message = "char after CR"; });
@@ -270,7 +265,7 @@ private:
 
   void begin_row()
   {
-     assert(cell_offsets.empty());
+     assert(not is_row_open());
      cell_offsets.push_back(0);
      out.begin_row();
   }
@@ -279,7 +274,7 @@ private:
   // adds an entry to the offsets set
   void next_cell(bool has_content = true)
   {
-    assert(!cell_offsets.empty());
+    assert(is_row_open());
     const unsigned int start_off = cell_offsets.back();
     const unsigned int end_off = cells_buffer.size();
 
@@ -298,7 +293,7 @@ private:
 
   void end_row()
   {
-     assert(!cell_offsets.empty());
+     assert(is_row_open());
 
      // give client a NON-CONST buffer
      // so they can modify in-place for better efficiency
