@@ -505,8 +505,7 @@ private:
   template <class Container>
   bool match_char( Container const& target ) const {
     using boost::range::find;
-    using boost::end;
-    return find(target, trans.value) != end(target);
+    return find(target, trans.value) != boost::end(target);
   }
 
 
