@@ -455,6 +455,7 @@ bool flush()
 {
   if (trans.is_row_open()) {
     using namespace csvFSM;
+    trans.row_file_start_row = current_row;
     process_event( Enewline() );
   }
   return (trans.error_message != NULL);
