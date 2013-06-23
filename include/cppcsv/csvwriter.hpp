@@ -4,15 +4,15 @@
 
 namespace cppcsv {
 
-template <typename Output>
-class csv_writer : public csv_builder {
+template <typename Output, typename Char = char>
+class csv_writer : public csv_builder_t<Char> {
 public:
-  csv_writer(char qchar='"',char sep=',',bool smart_quote=false)
+  csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false)
     : qchar(qchar),sep(sep),
       smart_quote(smart_quote),
       first(true)
   {}
-  csv_writer(Output out,char qchar='"',char sep=',',bool smart_quote=false)
+  csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false)
     : out(out),
       qchar(qchar),sep(sep),
       smart_quote(smart_quote),
@@ -22,7 +22,7 @@ public:
   virtual void begin_row() {
     first=true;
   }
-  virtual void cell(const char *buf,int len) {
+  virtual void cell(const Char *buf,int len) {
     if (!first) {
       out(&sep,1);
     } else {
@@ -36,7 +36,7 @@ public:
     } else {
       out(&qchar,1);
 
-      const char *pos=buf;
+      const Char *pos=buf;
       while (len>0) {
         if (*pos==qchar) {
           out(buf,pos-buf+1); // first qchar
@@ -51,22 +51,27 @@ public:
     }
   }
   virtual void end_row() {
-    out("\n",1);
+     static const Char newline = Char('\n');
+    out(&newline, 1);
   }
 private:
-  bool need_quote(const char *buf,int len) const {
+  bool need_quote(const Char *buf,int len) const {
+     static const Char space = Char(' ');
+     static const Char tab = Char('\t');
+     static const Char newline = Char('\n');
+
     // check for leading/trailing whitespace
     if (len > 0) {
-      if (   (*buf == ' ')
-          || (*buf == '\t')
-          || (*(buf+len-1) == ' ')
-          || (*(buf+len-1) == '\t')) {
+      if (   (*buf == space)
+          || (*buf == tab)
+          || (*(buf+len-1) == space)
+          || (*(buf+len-1) == tab)) {
         return true;
       }
     }
 
     while (len>0) {
-      if ( (*buf==qchar)||(*buf==sep)||(*buf=='\n') ) {
+      if ( (*buf==qchar)||(*buf==sep)||(*buf==newline) ) {
         return true;
       }
       buf++;
@@ -77,8 +82,8 @@ private:
 
 private:
   Output out;
-  char qchar;
-  char sep;
+  Char qchar;
+  Char sep;
   bool smart_quote;
 
   bool first;
@@ -88,22 +93,23 @@ private:
 
 // note: the CSV standard says to use DOS-CR
 // https://tools.ietf.org/html/rfc4180
-template <class Output>
+template <class Output, typename Char = char>
 struct add_dos_cr_out {
   add_dos_cr_out( Output out ) : out(out) {}
 
-  void operator()(const char *buf,int len) {
+  void operator()(const Char *buf,int len) {
     bool last_was_cr = false;
-    const char *pos = buf;
+    const Char *pos = buf;
+    static const Char cr = Char('\r');
 
     while (len>0) {
       if ( (*pos == '\n') && !last_was_cr ) {
         out(buf, pos-buf); // print what came before newline
-        out("\r", 1);      // print CR
+        out(&cr, 1);      // print CR
         buf = pos;         // start from the newline (it'll be printed later)
       }
 
-      last_was_cr = (*pos == '\r');
+      last_was_cr = (*pos == cr);
 
       pos++;
       len--;

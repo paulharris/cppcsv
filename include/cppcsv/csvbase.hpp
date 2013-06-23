@@ -4,19 +4,20 @@ namespace cppcsv {
 
 // basic virtual interface for catching the begin/cell/end emissions.
 // You can avoid the virtual calls by templating csvparser on your own builder.
-class csv_builder { // abstract base
+template <class Char>
+class csv_builder_t { // abstract base
 public:
-  virtual ~csv_builder() {}
+  virtual ~csv_builder_t() {}
 
   virtual void begin_row() {}
-  virtual void cell( const char *buf, int len ) =0;  // buf can be NULL
+  virtual void cell( const Char *buf, int len ) =0;  // buf can be NULL
   virtual void end_row() {}
 
   // DO NOT OVERRIDE, this is an
   // Optional interface that csvparser supports,
   // but other existing csv_builder clients do not.
   void end_full_row(
-        char* buffer,
+        Char* buffer,
         unsigned int num_cells,
         const unsigned int * offsets,  // array[num_cells+1]
         unsigned int file_row          // row where these cells started
@@ -25,6 +26,8 @@ public:
      this->end_row();
   }
 };
+
+typedef csv_builder_t<char> csv_builder;
 
 
 // This adaptor allows you to use csvparser on a emit-per-row basis
