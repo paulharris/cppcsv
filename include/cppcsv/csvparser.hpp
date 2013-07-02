@@ -142,7 +142,8 @@ public:
 
   TTS(ReadDosCR,    Eqchar,    ReadError, { error_message = "quote after CR"; });
   TTS(ReadDosCR,    Esep,      ReadError, { error_message = "sep after CR"; });
-  TTS(ReadDosCR,    Enewline,  Start,     { if (is_row_open()) { end_row(); } });
+  // If row is blank, begin and then end it.
+  TTS(ReadDosCR,    Enewline,  Start,     { if (!is_row_open()) { begin_row(); } end_row(); });
   TTS(ReadDosCR,    Edos_cr,   ReadError, { error_message = "CR after CR"; });
   TTS(ReadDosCR,    Ewhitespace, ReadError, { error_message = "whitespace after CR"; });
   TTS(ReadDosCR,    Echar,     ReadError, { error_message = "char after CR"; });
