@@ -7,27 +7,28 @@ namespace cppcsv {
 template <typename Output, typename Char = char>
 class csv_writer : public csv_builder_t<Char> {
 public:
-  csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false)
+  csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0)
     : qchar(qchar),sep(sep),
       smart_quote(smart_quote),
-      first(true)
+      col(0),
+      min_columns(min_columns)
   {}
-  csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false)
+  csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0)
     : out(out),
       qchar(qchar),sep(sep),
       smart_quote(smart_quote),
-      first(true)
+      col(0),
+      min_columns(min_columns)
   {}
 
   virtual void begin_row() {
-    first=true;
+    col = 0;
   }
   virtual void cell(const Char *buf,int len) {
-    if (!first) {
+    if (col != 0) {
       out(&sep,1);
-    } else {
-      first=false;
     }
+    ++col;
     if (!buf) {
       return;
     }
@@ -50,8 +51,17 @@ public:
       out(&qchar,1);
     }
   }
+
   virtual void end_row() {
      static const Char newline = Char('\n');
+
+     while (col < min_columns)
+     {
+       if (col != 0)
+          out(&sep,1);
+       ++col;
+     }
+
     out(&newline, 1);
   }
 private:
@@ -86,7 +96,8 @@ private:
   Char sep;
   bool smart_quote;
 
-  bool first;
+  unsigned int col;
+  unsigned int min_columns;
 };
 
 
