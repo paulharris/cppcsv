@@ -1,6 +1,7 @@
 #pragma once
 
 #include "csvbase.hpp"
+#include <cassert>
 
 namespace cppcsv {
 
@@ -11,20 +12,25 @@ public:
     : qchar(qchar),sep(sep),
       smart_quote(smart_quote),
       col(0),
-      min_columns(min_columns)
+      min_columns(min_columns),
+      row_is_open(false)
   {}
   csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0)
     : out(out),
       qchar(qchar),sep(sep),
       smart_quote(smart_quote),
       col(0),
-      min_columns(min_columns)
+      min_columns(min_columns),
+      row_is_open(false)
   {}
 
   virtual void begin_row() {
+    assert(!row_is_open);
+    row_is_open = true;
     col = 0;
   }
   virtual void cell(const Char *buf,int len) {
+    assert(row_is_open);
     if (col != 0) {
       out(&sep,1);
     }
@@ -53,6 +59,8 @@ public:
   }
 
   virtual void end_row() {
+     assert(row_is_open);
+     row_is_open = false;
      static const Char newline = Char('\n');
 
      while (col < min_columns)
@@ -64,6 +72,14 @@ public:
 
     out(&newline, 1);
   }
+
+  bool is_row_open() const { return row_is_open; }
+
+  // call this at the end, to check for correct usage
+  void finish() {
+     assert(!row_is_open);
+  }
+
 private:
   bool need_quote(const Char *buf,int len) const {
      static const Char space = Char(' ');
@@ -98,6 +114,8 @@ private:
 
   unsigned int col;
   unsigned int min_columns;
+
+  bool row_is_open;
 };
 
 
