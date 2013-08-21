@@ -58,7 +58,9 @@ public:
     }
   }
 
-  virtual void end_row() {
+  // skip_newline: provided for unusual situations, where if
+  // eg only one cell were printed out, we don't want a newline at the end.
+  virtual void end_row(bool skip_newline = false) {
      assert(row_is_open);
      row_is_open = false;
      static const Char newline = Char('\n');
@@ -70,7 +72,8 @@ public:
        ++col;
      }
 
-    out(&newline, 1);
+     if (not skip_newline)
+       out(&newline, 1);
   }
 
   bool is_row_open() const { return row_is_open; }
