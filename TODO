@@ -1,0 +1,5 @@
+find_first_of() should actually be just find(begin(),end(),trans.value)
+so that user could use boost::array<char,2> as the multiple quote char list,
+and give compiler ability to unroll all of the comparison loops.
+
+make non-copyable to avoid confusion with state machine's state
