@@ -101,8 +101,23 @@ private:
       }
     }
 
+    // we need a quote if we start with a quote
+    if (len > 0 && *buf == qchar)
+       return true;
+
+    // Note: readers will accept quotes in the middle of unquoted cells
+    // But smartquote will always quote cells with quotes in them.
+
     while (len>0) {
-      if ( (*buf==qchar)||(*buf==sep)||(*buf==newline) ) {
+      if (
+            // Note: Quoting cells that have quotes in them is desired
+            //   and recommended, but not required.  We do this.
+            // If you want it to output CSV like Excel's clipboard, then comment
+            // out the next line. But its more vague and less reliable.
+            (*buf==qchar) ||
+            (*buf==sep) ||
+            (*buf==newline) )
+      {
         return true;
       }
       buf++;
