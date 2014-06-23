@@ -38,7 +38,7 @@ public:
     if (!buf) {
       return;
     }
-    if ( (smart_quote)&&(!need_quote(buf,len)) ) {
+    if ( (qchar == 0) || ((smart_quote)&&(!need_quote(buf,len)))) {
       out(buf,len);
     } else {
       out(&qchar,1);
@@ -85,6 +85,8 @@ public:
 
 private:
   bool need_quote(const Char *buf,int len) const {
+     assert(qchar != 0);
+
      static const Char space = Char(' ');
      static const Char tab = Char('\t');
      static const Char newline = Char('\n');
