@@ -193,12 +193,17 @@ public:
   TTS(ReadQuotedSkipPost, Ecomment,    ReadComment,         { next_cell(); end_row(); });
 
   // we have seen some text, and we are reading it in
-  TTS(ReadUnquoted, Eqchar,      ReadError,              { error_message = "unexpected quote in unquoted string"; });
+  // TTS(ReadUnquoted, Eqchar,      ReadError,              { error_message = "unexpected quote in unquoted string"; });
+  // Modified, if we see a quote in an unquoted cell, then just read as a plain quote
+  // The rule of always quoting cells with quotes is a "please do" but Excel does not practice it when writing to Clipboard, and is tolerant when reading.
+  // So Eqchar is hangled in the same way as Echar (below)
+
   TTS(ReadUnquoted, Esep,        ReadSkipPre,            { next_cell(); });
   TTS(ReadUnquoted, Enewline,    Start,                  { next_cell(); end_row(); });
   TTS(ReadUnquoted, Edos_cr,     ReadDosCR,              { next_cell(); });
   TTS(ReadUnquoted, Ewhitespace, ReadUnquotedWhitespace, { remember_whitespace(); });  // must remember whitespace in case its in the middle of the cell
   TTS(ReadUnquoted, Echar,       ReadUnquoted,           { add_whitespace(); add(); });
+  TTS(ReadUnquoted, Eqchar,      ReadUnquoted,           { add_whitespace(); add(); });   // tolerant to quotes in the middle of unquoted cells
   TTS(ReadUnquoted, Ecomment,    ReadComment,            { next_cell(); end_row(); });
 
   // we have been reading some text, and we are working through some whitespace,
