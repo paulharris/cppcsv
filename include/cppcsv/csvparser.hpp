@@ -413,7 +413,9 @@ bool process_chunk(const char *&buf, const int len)
 
      using namespace csvFSM;
 
-         if (match_char('\r'))      process_event(Edos_cr());
+         if (trans.value == '\0')   trans.error_message = "Unexpected NULL character"; // check for NULL character
+
+    else if (match_char('\r'))      process_event(Edos_cr());
 
     else if (match_char('\n'))      {
        trans.row_file_start_row = current_row;
