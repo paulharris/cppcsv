@@ -8,17 +8,19 @@ namespace cppcsv {
 template <typename Output, typename Char = char>
 class csv_writer : public csv_builder_t<Char> {
 public:
-  csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0)
+  csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0, bool quote_quotes = true)
     : qchar(qchar),sep(sep),
       smart_quote(smart_quote),
+		quote_quotes(quote_quotes),
       col(0),
       min_columns(min_columns),
       row_is_open(false)
   {}
-  csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0)
+  csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0, bool quote_quotes = true)
     : out(out),
       qchar(qchar),sep(sep),
       smart_quote(smart_quote),
+		quote_quotes(quote_quotes),
       col(0),
       min_columns(min_columns),
       row_is_open(false)
@@ -101,7 +103,8 @@ private:
       }
     }
 
-    // we need a quote if we start with a quote
+    // we need a quote if we start with a quote,
+	 // even if "quote_quotes" is disabled.
     if (len > 0 && *buf == qchar)
        return true;
 
@@ -109,12 +112,12 @@ private:
     // But smartquote will always quote cells with quotes in them.
 
     while (len>0) {
-      if (
-            // Note: Quoting cells that have quotes in them is desired
-            //   and recommended, but not required.  We do this.
-            // If you want it to output CSV like Excel's clipboard, then comment
-            // out the next line. But its more vague and less reliable.
-            (*buf==qchar) ||
+      if (  // Note: Quoting cells that have quotes in them is desired
+            //   and recommended, but not required.  We do this if enabled.
+            // If you want it to output CSV like Excel's clipboard, then
+				// set quote_quotes=false, but we will still quote if a cell
+				// STARTS with a quote character (is confusing for Excel / LibreCalc).
+            (quote_quotes && *buf==qchar) ||
             (*buf==sep) ||
             (*buf==newline) )
       {
@@ -131,6 +134,14 @@ private:
   Char qchar;
   Char sep;
   bool smart_quote;
+  // optional - do not quote the cell when there is a quote character inside the cell,
+  // normally you should quote such cells for CSV,
+  // but you should NOT quote these cells when we are generating for a clipboard TSV.
+  // Except, we WILL quote when the cell starts with a quote.  This is a cause for 
+  // confusion for Excel (it drops the quotes), and LibreOffice only partially pastes
+  // the text.
+  bool quote_quotes;
+
 
   unsigned int col;
   unsigned int min_columns;
