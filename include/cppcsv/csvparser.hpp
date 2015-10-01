@@ -404,6 +404,11 @@ bool process_chunk(const std::string &line) // not required to be linewise
   return process_chunk(buf,line.size());
 }
 
+
+// note: call this like so
+// const char* temp = bufptr;
+// process_chunk(temp,len);
+// if there is an error, then temp is at the character that caused the problem.
 bool process_chunk(const char *&buf, const int len)
 {
   char const * const buf_end = buf + len;
