@@ -22,7 +22,7 @@ struct EmptyBaseClass {};
 template <typename Output, typename Char = char, class BaseClass = EmptyBaseClass >
 class csv_writer : public BaseClass, public per_cell_tag {
 public:
-  csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0, bool quote_quotes = true)
+  csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false, size_t min_columns = 0, bool quote_quotes = true)
     : qchar(qchar),sep(sep),
       smart_quote(smart_quote),
 		quote_quotes(quote_quotes),
@@ -30,7 +30,7 @@ public:
       min_columns(min_columns),
       row_is_open(false)
   {}
-  csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0, bool quote_quotes = true)
+  csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false, size_t min_columns = 0, bool quote_quotes = true)
     : out(out),
       qchar(qchar),sep(sep),
       smart_quote(smart_quote),
@@ -45,7 +45,7 @@ public:
     row_is_open = true;
     col = 0;
   }
-  void cell(const Char *buf, unsigned int len) {
+  void cell(const Char *buf, size_t len) {
     assert(row_is_open);
     if (col != 0) {
       out(&sep,1);
@@ -62,13 +62,13 @@ public:
       const Char *pos=buf;
       while (len>0) {
         if (*pos==qchar) {
-          out(buf, static_cast<unsigned int>(pos-buf+1)); // first qchar
+          out(buf, pos-buf+1); // first qchar
           buf=pos; // qchar still there! (second one)
         }
         pos++;
         len--;
       }
-      out(buf, static_cast<unsigned int>(pos-buf));
+      out(buf, pos-buf);
 
       out(&qchar,1);
     }
@@ -100,7 +100,7 @@ public:
   }
 
 private:
-  bool need_quote(const Char *buf, unsigned int len) const {
+  bool need_quote(const Char *buf, size_t len) const {
      assert(qchar != 0);
 
      static const Char space = Char(' ');
@@ -157,8 +157,8 @@ private:
   bool quote_quotes;
 
 
-  unsigned int col;
-  unsigned int min_columns;
+  size_t col;
+  size_t min_columns;
 
   bool row_is_open;
 };
@@ -171,14 +171,14 @@ template <class Output, typename Char = char>
 struct add_dos_cr_out {
   add_dos_cr_out( Output out ) : out(out) {}
 
-  void operator()(const Char *buf, unsigned int len) {
+  void operator()(const Char *buf, size_t len) {
     bool last_was_cr = false;
     const Char *pos = buf;
     static const Char cr = Char('\r');
 
     while (len>0) {
       if ( (*pos == '\n') && !last_was_cr ) {
-        out(buf, static_cast<unsigned int>(pos-buf)); // print what came before newline
+        out(buf, pos-buf); // print what came before newline
         out(&cr, 1);      // print CR
         buf = pos;         // start from the newline (it'll be printed later)
       }
@@ -189,7 +189,7 @@ struct add_dos_cr_out {
       len--;
     }
 
-    out(buf, static_cast<unsigned int>(pos-buf));
+    out(buf, pos-buf);
   }
 
 private:
@@ -208,7 +208,7 @@ public:
   OutputRef(Ref & b) : out(b) {}
 
   template <class Char>
-  void operator()(const Char *buf, unsigned int len) { out(buf,len); }
+  void operator()(const Char *buf, size_t len) { out(buf,len); }
 };
 
 template <class Ref>

@@ -14,7 +14,7 @@ const Row Table::empty_row(empty_table,-1);
 const Value Table::empty_value(empty_row,-1,std::string());
 
 // {{{ Value
-Value::Value(const Row &parent, unsigned int cidx,const std::string &value)
+Value::Value(const Row &parent, size_t cidx,const std::string &value)
   : parent(parent),
     cidx(cidx),
     value(value)
@@ -38,14 +38,14 @@ const std::string &Value::asString() const
 // }}}
 
 // {{{ Row
-Row::Row(Table &parent, unsigned int ridx)
+Row::Row(Table &parent, size_t ridx)
   : parent(parent),ridx(ridx)
 {
 }
 
 Row::~Row()
 {
-  for (std::map<unsigned int,Value *>::iterator it=columns.begin(),end=columns.end();it!=end;++it) {
+  for (std::map<size_t,Value *>::iterator it=columns.begin(),end=columns.end();it!=end;++it) {
     delete it->second;
   }
 }
@@ -60,12 +60,12 @@ const Value &Row::operator[](const char *key) const
   return operator[](cidx);
 }
 
-const Value &Row::operator[](unsigned int cidx) const // {{{
+const Value &Row::operator[](size_t cidx) const // {{{
 {
   if (cidx>=size()) {
     return parent.empty_value;
   }
-  std::map<unsigned int,Value *>::const_iterator it=columns.find(cidx);
+  std::map<size_t,Value *>::const_iterator it=columns.find(cidx);
   if (it==columns.end()) {
     return parent.empty_value;
   }
@@ -74,7 +74,7 @@ const Value &Row::operator[](unsigned int cidx) const // {{{
 }
 // }}}
 
-unsigned int Row::size() const
+size_t Row::size() const
 {
   if (!columns.empty()) {  // columns.(r)begin()!=columns.(r)end()
     return columns.rbegin()->first+1; // last existing key +1
@@ -84,7 +84,7 @@ unsigned int Row::size() const
 //  return parent.columnnames.size();
 }
 
-void Row::set(unsigned int cidx,const std::string &value)
+void Row::set(size_t cidx,const std::string &value)
 {
   if (&value==&del) {
     columns.erase(cidx);
@@ -97,9 +97,9 @@ void Row::dump() const // {{{
 {
   printf("[%d]:",ridx);
 
-//  for (std::map<unsigned int,Value *>::iterator it=columns.begin(),end=columns.end();it!=end;++it) {
-  const unsigned int clen=size();
-  for (unsigned int iA=0;iA<clen;iA++) {
+//  for (std::map<size_t,Value *>::iterator it=columns.begin(),end=columns.end();it!=end;++it) {
+  const size_t clen=size();
+  for (size_t iA=0;iA<clen;iA++) {
     printf("%s;",operator[](iA).asCString());
   }
   printf("\n");
@@ -109,14 +109,14 @@ void Row::dump() const // {{{
 void Row::write(csv_builder &out) const // {{{
 {
   out.begin_row();
-  const unsigned int clen=size();
-  for (unsigned int iA=0;iA<clen;iA++) {
+  const size_t clen=size();
+  for (size_t iA=0;iA<clen;iA++) {
     const Value &val=operator[](iA);
     if (&val==&parent.empty_value) {
       out.cell(NULL,0);
     } else {
       const std::string &str=val.asString(); 
-      out.cell(str.data(), static_cast<unsigned int>(str.size()));
+      out.cell(str.data(), str.size());
     }
   }
   out.end_row();
@@ -134,7 +134,7 @@ Table::~Table()
   }
 }
 
-const Row &Table::operator[](unsigned int ridx) const
+const Row &Table::operator[](size_t ridx) const
 {
   if (ridx>=size()) {
     return empty_row;
@@ -142,21 +142,21 @@ const Row &Table::operator[](unsigned int ridx) const
   return *rows[ridx];
 }
 
-unsigned int Table::size() const
+size_t Table::size() const
 {
-  return static_cast<unsigned int>(rows.size());
+  return rows.size();
 }
 
 void Table::dump() const // {{{
 {
-  const unsigned int clen=size();
-  for (unsigned int iA=0;iA<clen;iA++) {
+  const size_t clen=size();
+  for (size_t iA=0;iA<clen;iA++) {
     printf("%s;",columnnames[iA]->c_str());
   }
   printf("\n---\n");
 
-  const unsigned int len=size();
-  for (unsigned int iA=0;iA<len;iA++) {
+  const size_t len=size();
+  for (size_t iA=0;iA<len;iA++) {
     (operator[])(iA).dump();
 //    rows[iA]->dump();
   }
@@ -165,7 +165,7 @@ void Table::dump() const // {{{
 
 int Table::find_column(const std::string &name) const // {{{
 {
-  std::multimap<std::string,unsigned int>::const_iterator it=rev_column.find(name);
+  std::multimap<std::string,size_t>::const_iterator it=rev_column.find(name);
   if (it==rev_column.end()) {
     return -1;
   }
@@ -177,12 +177,12 @@ int Table::find_column(const std::string &name) const // {{{
 
 Row &Table::IBuild::newRow(Table &csv) // {{{
 {
-  csv.rows.push_back(new Row(csv, static_cast<unsigned int>(csv.rows.size())));
+  csv.rows.push_back(new Row(csv, csv.rows.size()));
   return *csv.rows.back();
 }
 // }}}
 
-Row &Table::IBuild::insertRow(Table &csv, unsigned int at_ridx) // {{{
+Row &Table::IBuild::insertRow(Table &csv, size_t at_ridx) // {{{
 {
   if (at_ridx<csv.rows.size()) { // insert
     Row *ret=new Row(csv,at_ridx);
@@ -207,7 +207,7 @@ Row &Table::IBuild::insertRow(Table &csv, unsigned int at_ridx) // {{{
     return *ret;
   } else { // append
     csv.rows.reserve(at_ridx+1);
-    for (unsigned int iA=static_cast<unsigned int>(csv.rows.size());iA<=at_ridx;iA++) {
+    for (size_t iA=csv.rows.size();iA<=at_ridx;iA++) {
       csv.rows.push_back(new Row(csv,iA));
     }
     return *csv.rows.back();
@@ -215,7 +215,7 @@ Row &Table::IBuild::insertRow(Table &csv, unsigned int at_ridx) // {{{
 }
 // }}}
 
-void Table::IBuild::deleteRow(Table &csv, unsigned int ridx) // {{{
+void Table::IBuild::deleteRow(Table &csv, size_t ridx) // {{{
 {
   if (ridx>=csv.rows.size()) {
     return; // no-op   (TODO?)
@@ -239,10 +239,10 @@ void Table::IBuild::setHeader(Table &csv,const std::vector<std::string>& names) 
   csv.columnnames.clear();
   csv.rev_column.clear();
 
-  const unsigned int len = static_cast<unsigned int>(names.size());
+  const size_t len = names.size();
   csv.columnnames.reserve(len);
-  for (unsigned int iA=0;iA<len;iA++) {
-    std::multimap<std::string, unsigned int>::iterator it=csv.rev_column.insert(std::make_pair(names[iA],iA));
+  for (size_t iA=0;iA<len;iA++) {
+    std::multimap<std::string, size_t>::iterator it=csv.rev_column.insert(std::make_pair(names[iA],iA));
     csv.columnnames.push_back(&it->first);
   }
 }
@@ -252,16 +252,16 @@ void Table::write(csv_builder &out,bool with_header) const // {{{
 {
   if (with_header) {
     out.begin_row();
-    const int clen=size();
-    for (int iA=0;iA<clen;iA++) {
+    const size_t clen=size();
+    for (size_t iA=0;iA<clen;iA++) {
       out.cell(columnnames[iA]->c_str(),
-               static_cast<unsigned int>(columnnames[iA]->size()));
+               columnnames[iA]->size());
     }
     out.end_row();
   }
 
-  const int len=size();
-  for (int iA=0;iA<len;iA++) {
+  const size_t len=size();
+  for (size_t iA=0;iA<len;iA++) {
     (operator[])(iA).write(out);
   }
 }
@@ -290,7 +290,7 @@ void builder::begin_row() // {{{
 }
 // }}}
 
-void builder::cell(const char *buf, unsigned int len) // {{{
+void builder::cell(const char *buf, size_t len) // {{{
 {
   if (as_header) {
 //    header.emplace_back(buf,len);

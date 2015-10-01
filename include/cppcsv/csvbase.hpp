@@ -17,7 +17,7 @@ public:
   virtual ~csv_builder_t() {}
 
   virtual void begin_row() = 0;
-  virtual void cell( const Char *buf, int len ) = 0;  // buf can be NULL
+  virtual void cell( const Char *buf, size_t len ) = 0;  // buf can be NULL
   virtual void end_row() = 0;
 };
 
@@ -43,9 +43,9 @@ public:
   // the last offset is the one-past-the-end index of the last cell
   void end_full_row(
         char* buffer,
-        unsigned int num_cells,
-        const unsigned int * offsets, // array[num_cells+1]
-        unsigned int file_row          // row where these cells started
+        size_t num_cells,
+        const size_t * offsets, // array[num_cells+1]
+        size_t file_row          // row where these cells started
         )
   {
     function(buffer, num_cells, offsets, file_row);

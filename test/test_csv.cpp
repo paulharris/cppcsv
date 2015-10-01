@@ -33,7 +33,7 @@ public:
   void begin_row() {
     printf("begin_row\n");
   }
-  void cell(const char *buf,int len) {
+  void cell(const char *buf, size_t len) {
     if (!buf) {
       printf("(null) ");
     } else {
@@ -48,14 +48,14 @@ public:
 class null_builder : public cppcsv::per_cell_tag {
 public:
   void begin_row() {}
-  void cell(const char *buf,int len) {}
+  void cell(const char *buf, size_t len) {}
   void end_row() {}
 };
 
 struct file_out {
   file_out(FILE *f) : f(f) { assert(f); }
 
-  void operator()(const char *buf,int len) {
+  void operator()(const char *buf, size_t len) {
     fwrite(buf,1,len,f);
     fflush(f); // immediate flush for help with debugging
   }
@@ -66,12 +66,12 @@ private:
 
 
 // for testing function row interface
-static void print_bulk_row( const char* buffer, unsigned int num_cells, const unsigned int * offsets, unsigned int file_row )
+static void print_bulk_row( const char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
 {
   printf("ROW %u (%u cells): ", file_row, num_cells);
-  for (unsigned int i = 0; i != num_cells; ++i) {
+  for (size_t i = 0; i != num_cells; ++i) {
     const char* cell_buffer = buffer + offsets[i];
-    unsigned int len = (offsets[i+1] - offsets[i]);
+    size_t len = (offsets[i+1] - offsets[i]);
 
     if (len == 0) {
       printf("(null) ");
@@ -87,12 +87,12 @@ static void print_bulk_row( const char* buffer, unsigned int num_cells, const un
 // for testing functor row interface
 struct print_bulk_row_t : public cppcsv::per_row_tag
 {
-  void end_full_row( const char* buffer, unsigned int num_cells, const unsigned int * offsets, unsigned int file_row )
+  void end_full_row( const char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
   {
     printf("ROW %u (%u cells): ", file_row, num_cells);
-    for (unsigned int i = 0; i != num_cells; ++i) {
+    for (size_t i = 0; i != num_cells; ++i) {
       const char* cell_buffer = buffer + offsets[i];
-      unsigned int len = (offsets[i+1] - offsets[i]);
+      size_t len = (offsets[i+1] - offsets[i]);
 
       if (len == 0) {
         printf("(null) ");
@@ -163,7 +163,7 @@ int main(int argc,char **argv)
   open_check("test_dos.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -207,7 +207,7 @@ int main(int argc,char **argv)
   open_check("test_dos.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -251,7 +251,7 @@ int main(int argc,char **argv)
   open_check("test.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -291,7 +291,7 @@ int main(int argc,char **argv)
   open_check("test.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -330,7 +330,7 @@ int main(int argc,char **argv)
   open_check("test_bad_separator.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -369,7 +369,7 @@ int main(int argc,char **argv)
   open_check("test_bad_dos.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -410,7 +410,7 @@ int main(int argc,char **argv)
   open_check("test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -449,7 +449,7 @@ int main(int argc,char **argv)
   open_check("test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -488,7 +488,7 @@ int main(int argc,char **argv)
   open_check("test_collapse_separators.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -527,7 +527,7 @@ int main(int argc,char **argv)
   open_check("test_collapse_separators.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -568,7 +568,7 @@ int main(int argc,char **argv)
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -609,7 +609,7 @@ int main(int argc,char **argv)
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -650,7 +650,7 @@ int main(int argc,char **argv)
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -691,7 +691,7 @@ int main(int argc,char **argv)
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -732,7 +732,7 @@ int main(int argc,char **argv)
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -774,7 +774,7 @@ int main(int argc,char **argv)
   open_check("test_whitespace_sep.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -816,7 +816,7 @@ int main(int argc,char **argv)
   open_check("test_whitespace_sep.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -858,7 +858,7 @@ int main(int argc,char **argv)
   open_check("test_no_last_newline.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -900,7 +900,7 @@ int main(int argc,char **argv)
   open_check( "test_no_last_newline.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -947,7 +947,7 @@ int main(int argc,char **argv)
   open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -976,14 +976,14 @@ int main(int argc,char **argv)
   Arr quotes = { '"', '\'' };
   Arr seps   = { ';', ',' };
 
-  typedef cppcsv::csv_builder_bulk<void (*)(const char*, unsigned int, const unsigned int*, unsigned int)> Builder;
+  typedef cppcsv::csv_builder_bulk<void (*)(const char*, size_t, const size_t*, size_t)> Builder;
   Builder builder(print_bulk_row);
   cppcsv::csv_parser<Builder,Arr,Arr,char> cp(builder, quotes, seps);
   std::ifstream in;
   open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -1013,7 +1013,7 @@ int main(int argc,char **argv)
   open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  std::streamoff length = in.tellg();
+  size_t length = static_cast<size_t>(in.tellg());
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);

@@ -79,7 +79,7 @@ void call_out_cell( Output & out, per_cell_tag & )
 }
 
 template <class Output, typename Char>
-void call_out_cell( Output & out, per_cell_tag &, const Char *buf, unsigned int len )
+void call_out_cell( Output & out, per_cell_tag &, const Char *buf, size_t len )
 {
    out.cell(buf,len);
 }
@@ -89,9 +89,9 @@ template <class Output, typename Char>
 void call_out_end_full_row(
       Output & out, per_cell_tag &,
       Char* buffer,
-      unsigned int num_cells,
-      const unsigned int * offsets,
-      unsigned int file_row
+      size_t num_cells,
+      const size_t * offsets,
+      size_t file_row
       )
 {
    // just calls end_row()
@@ -108,7 +108,7 @@ void call_out_begin_row( Output & out, per_row_tag & )
 }
 
 template <class Output, typename Char>
-void call_out_cell( Output & out, per_row_tag &, const Char *buf, unsigned int len )
+void call_out_cell( Output & out, per_row_tag &, const Char *buf, size_t len )
 {
    // do nothing
 }
@@ -131,9 +131,9 @@ template <class Output, typename Char>
 void call_out_end_full_row(
       Output & out, per_row_tag &,
       Char* buffer,
-      unsigned int num_cells,
-      const unsigned int * offsets,
-      unsigned int file_row
+      size_t num_cells,
+      const size_t * offsets,
+      size_t file_row
       )
 {
    out.end_full_row(buffer, num_cells, offsets, file_row);
@@ -158,7 +158,7 @@ struct Trans {
   // that way the Events do not need to carry their state with them.
   char value;
 
-  unsigned int row_file_start_row;      // first file row for this row
+  size_t row_file_start_row;      // first file row for this row
 
   // active quote character, required in the situation where multiple quote chars are possible
   // if =0 then there is no active_qchar
@@ -195,9 +195,9 @@ public:
      return cells_buffer.empty() && whitespace_state.empty();
   }
 
-  unsigned int last_cell_length() const {
+  size_t last_cell_length() const {
      assert(is_row_open());
-     return static_cast<unsigned int>(cells_buffer.size() - cell_offsets.back());
+     return cells_buffer.size() - cell_offsets.back();
   }
 
   bool is_row_open() const {
@@ -354,7 +354,7 @@ private:
 
   void begin_row()
   {
-     assert(not is_row_open());
+     assert(!is_row_open());
      cell_offsets.push_back(0);
      call_out_begin_row( out, out );
   }
@@ -364,8 +364,8 @@ private:
   void next_cell(bool has_content = true)
   {
     assert(is_row_open());
-    const unsigned int start_off = cell_offsets.back();
-    const unsigned int end_off = static_cast<unsigned int>(cells_buffer.size());
+    const size_t start_off = cell_offsets.back();
+    const size_t end_off = cells_buffer.size();
 
     cell_offsets.push_back(end_off);
 
@@ -391,7 +391,7 @@ private:
      call_out_end_full_row(
            out, out,
            buffer,                  // buffer
-           static_cast<unsigned int>(cell_offsets.size()-1),   // num cells
+           cell_offsets.size()-1,   // num cells
            &cell_offsets[0],        // offsets
            row_file_start_row       // first file row for this row
            );
@@ -402,7 +402,7 @@ private:
 
   CsvBuilder &out;
   std::string cells_buffer;
-  std::vector<unsigned int> cell_offsets;
+  std::vector<size_t> cell_offsets;
   std::string whitespace_state;
   bool trim_whitespace;
   bool collapse_separators;
@@ -431,7 +431,7 @@ struct csv_parser : boost::noncopyable {
 
    typedef csvFSM::Trans<CsvBuilder> MyTrans;
 
-   unsigned int current_row, current_column; // keeps track of where we are upto in the file
+   size_t current_row, current_column; // keeps track of where we are upto in the file
 
    // trim_whitespace: remove whitespace around unquoted cells
    // the standard says you should NOT trim, but many people would want to.

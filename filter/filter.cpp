@@ -58,17 +58,18 @@ static bool str_equal( const char* a, const char* b, size_t b_len )
 }
 
 
-static unsigned int column_ascii_2_index( const char* str, int len )
+static size_t column_ascii_2_index( const char* str, size_t len )
 {
    if (len > 3)
       throw runtime_error("Invalid spreadsheet column " + string(str,len));
-   unsigned int colidx = 0;
-   for (int i = 0; i < len; ++i)
+   size_t colidx = 0;
+   for (size_t i = 0; i < len; ++i)
    {
       char c = str[i];
-      if (static_cast<int>(c - 'A') < 0 || static_cast<int>(c - 'A') >= 26)
+	  int cidx = static_cast<int>(c - 'A');
+      if (cidx < 0 || cidx >= 26)
          throw runtime_error("Invalid spreadsheet column " + string(str,len));
-      colidx = colidx*26 + static_cast<unsigned int>(c - 'A' + 1);
+      colidx = colidx*26 + static_cast<size_t>(cidx + 1);
    }
    --colidx;
    return colidx;
@@ -76,7 +77,7 @@ static unsigned int column_ascii_2_index( const char* str, int len )
 
 
 
-static string index_2_column_ascii(unsigned int col)
+static string index_2_column_ascii(size_t col)
 {
    string colstr;
    ++col;
@@ -107,7 +108,7 @@ class ConfigBuilder : public cppcsv::per_cell_tag
    };
 
    State state;
-   unsigned int column;
+   size_t column;
 
 public:
    ConfigBuilder() :
@@ -118,8 +119,8 @@ public:
       column(0)
    {}
 
-   typedef pair<unsigned int, double> FilterNumber;
-   typedef pair<unsigned int, string> FilterText;
+   typedef pair<size_t, double> FilterNumber;
+   typedef pair<size_t, string> FilterText;
 
    bool files_have_header;
    bool add_filename_to_row;
@@ -127,26 +128,24 @@ public:
    bool has_input_headers;
    vector<string> input_headers;
 
-   vector<unsigned int> exclude_blanks;                  // remembers columns to exclude
-   vector< pair<unsigned int, string> > exclude_texts;   // remembers column --> text
-   vector< pair<unsigned int, double> > filter_mins;     // remembers column --> limit
-   vector< pair<unsigned int, double> > filter_maxs;     // remembers column --> limit
+   vector<size_t> exclude_blanks;                  // remembers columns to exclude
+   vector< pair<size_t, string> > exclude_texts;   // remembers column --> text
+   vector< pair<size_t, double> > filter_mins;     // remembers column --> limit
+   vector< pair<size_t, double> > filter_maxs;     // remembers column --> limit
 
-   vector<int> output_order;  // as many as they like. -1 --> output a blank column
+   vector<size_t> output_order;  // as many as they like. -1 --> output a blank column
    vector<string> output_header; // as many as output_header
 
 
    void begin_row()
    {
-      // if (state != End) // stay at the End state
-         // state = static_cast<State>(static_cast<int>(state)+1);
       column = 0;
    }
 
 
 
 
-   void cell(const char* buf, int len)
+   void cell(const char* buf, size_t len)
    {
       const char* begin = buf;
       const char* end = buf+len;
@@ -228,7 +227,7 @@ public:
 
       else
       {
-         int header_column = column-1;
+         size_t header_column = column-1;
 
          switch (state)
          {
@@ -301,7 +300,7 @@ public:
                   else if (!has_input_headers)
                   {
                      // if no InputHeaders at all, then use the spreadsheet name styling
-                     output_order.push_back( static_cast<int>(column_ascii_2_index(begin, len)) );
+                     output_order.push_back( column_ascii_2_index(begin, len) );
                   }
                   else
                   {
@@ -309,7 +308,7 @@ public:
                      vector<string>::iterator found = find(input_headers.begin(), input_headers.end(), h);
                      if (found == input_headers.end())
                         throw runtime_error("Could not find Input Header named '" + h + "'");
-                     output_order.push_back( static_cast<int>(distance(input_headers.begin(), found)) );
+                     output_order.push_back( distance(input_headers.begin(), found) );
                   }
                }
                break;
@@ -381,7 +380,7 @@ static const char* end( FixedString const& s )
 class InputFile
 {
    FILE * fp;
-   size_t pos;
+   uint64_t pos;
 
    // noncopyable
    InputFile( InputFile const& );
@@ -401,12 +400,12 @@ public:
       fclose(fp);
    }
 
-   size_t position() const
+   uint64_t position() const
    {
       return pos;
    }
 
-   size_t size()
+   uint64_t size()
    {
       int64_t pos = ftell64(fp);
       fseek64(fp, 0, SEEK_END);
@@ -440,7 +439,7 @@ public:
 class OutputFile
 {
    FILE * fp;
-   size_t pos;
+   uint64_t pos;
 
    // noncopyable
    OutputFile( OutputFile const& );
@@ -469,7 +468,7 @@ public:
       fclose(fp);
    }
 
-   size_t position() const
+   uint64_t position() const
    {
       return pos;
    }
@@ -482,7 +481,7 @@ public:
    }
 
    // for csvwriter to use
-   void operator()(const char *buf, int len)
+   void operator()(const char *buf, size_t len)
    {
       write(buf, len);
    }
@@ -500,7 +499,7 @@ class FilterBuilder : public cppcsv::per_row_tag
    ConfigBuilder const& config;
    CsvWriter & out;
    bool first_row;
-   vector<unsigned int> map_header_to_file;
+   vector<size_t> map_header_to_file;
    string filename;
 
 public:
@@ -513,27 +512,27 @@ public:
    }
 
 
-   void end_full_row( char* buffer, unsigned int num_cells, const unsigned int * offsets, unsigned int file_row )
+   void end_full_row( char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
    {
       if (first_row && config.files_have_header)
       {
          // index what we see from the file
          vector<string> cells;
-         for (unsigned int i = 0; i != num_cells; ++i)
+         for (size_t i = 0; i != num_cells; ++i)
             cells.push_back( string( buffer+offsets[i], offsets[i+1]-offsets[i] ) );
 
-		 unsigned int num_exp = static_cast<unsigned int>(config.input_headers.size());
+		 size_t num_exp = config.input_headers.size();
 
          // match the file header to the expected headers
          // for each expected header, store the column index from the file
          map_header_to_file.resize(num_exp);
 
          // find matching header
-         for (unsigned int i = 0; i != num_exp; ++i)
+         for (size_t i = 0; i != num_exp; ++i)
          {
             string const& header = config.input_headers[i];
 
-            unsigned int j = 0;
+            size_t j = 0;
             for (; j != cells.size(); ++j)
                if (header == cells[j])
                   break;
@@ -542,7 +541,7 @@ public:
             {
                ostringstream err;
                err << "Could not find header '" << header << "' in file which has headers:" << endl;
-               for (unsigned int k = 0; k != cells.size(); ++k)
+               for (size_t k = 0; k != cells.size(); ++k)
                   err << cells[k] << endl;
 
                throw runtime_error(err.str());
@@ -559,39 +558,39 @@ public:
          bool pass = true;
 
          // exclude blanks...
-         for (unsigned int i = 0; pass && i != config.exclude_blanks.size(); ++i)
+         for (size_t i = 0; pass && i != config.exclude_blanks.size(); ++i)
          {
-            unsigned int col = config.exclude_blanks[i];
+            size_t col = config.exclude_blanks[i];
             if (config.files_have_header)
                col = map_header_to_file[col];
             pass = col < num_cells && (offsets[col+1]-offsets[col]) > 0;
          }
 
          // exclude texts...
-         for (unsigned int i = 0; pass && i != config.exclude_texts.size(); ++i)
+         for (size_t i = 0; pass && i != config.exclude_texts.size(); ++i)
          {
-            unsigned int col = config.exclude_texts[i].first;
+            size_t col = config.exclude_texts[i].first;
             if (config.files_have_header)
                col = map_header_to_file[col];
 
             if (col < num_cells)
             {
-               unsigned int len = offsets[col+1]-offsets[col];
+               size_t len = offsets[col+1]-offsets[col];
                string const& ex = config.exclude_texts[i].second;
                pass = !str_equal(buffer+offsets[col], len, ex.c_str(), ex.size());
             }
          }
 
          // filter min...
-         for (unsigned int i = 0; pass && i != config.filter_mins.size(); ++i)
+         for (size_t i = 0; pass && i != config.filter_mins.size(); ++i)
          {
-            unsigned int col = config.filter_mins[i].first;
+            size_t col = config.filter_mins[i].first;
             if (config.files_have_header)
                col = map_header_to_file[col];
 
             if (col < num_cells)
             {
-               unsigned int len = offsets[col+1]-offsets[col];
+               size_t len = offsets[col+1]-offsets[col];
                double thresh = config.filter_mins[i].second;
 
                const char* begin = buffer+offsets[col];
@@ -608,15 +607,15 @@ public:
          }
 
          // filter max...
-         for (unsigned int i = 0; pass && i != config.filter_maxs.size(); ++i)
+         for (size_t i = 0; pass && i != config.filter_maxs.size(); ++i)
          {
-            unsigned int col = config.filter_maxs[i].first;
+            size_t col = config.filter_maxs[i].first;
             if (config.files_have_header)
                col = map_header_to_file[col];
 
             if (col < num_cells)
             {
-               unsigned int len = offsets[col+1]-offsets[col];
+               size_t len = offsets[col+1]-offsets[col];
                double thresh = config.filter_maxs[i].second;
 
                const char* begin = buffer+offsets[col];
@@ -638,13 +637,13 @@ public:
             out.begin_row();
 
             if (config.add_filename_to_row)
-               out.cell( filename.c_str(), static_cast<unsigned int>(filename.size()) );
+               out.cell( filename.c_str(), filename.size() );
 
-            unsigned int i = 0;
+            size_t i = 0;
             for (; i != config.output_order.size(); ++i)
             {
                // which input column do we want to output
-               unsigned int j = config.output_order[i];
+               size_t j = config.output_order[i];
 
                // if we are matching headers, then figure out which FILE header we want
                if (config.files_have_header)
@@ -672,7 +671,7 @@ public:
 class Output_to_Stdout
 {
 public:
-   void operator()( const char* str, int len )
+   void operator()( const char* str, size_t len )
    {
       cout.write(str, len);
    }
@@ -697,7 +696,7 @@ public:
       out.begin_row();
    }
 
-   void cell( const char* str, int len )
+   void cell( const char* str, size_t len )
    {
       out.cell(str,len);
    }
@@ -747,19 +746,19 @@ void parse_csv_file( const char* filename, Builder & builder, OutputFile const* 
    char buffer[buffer_size];
 
    InputFile in(filename);
-   size_t in_size = in.size();
+   uint64_t in_size = in.size();
    if (out)
-      cout << filename << "  " << static_cast<int64_t>(in_size/1024/1024) << " MB" << endl;
+      cout << filename << "  " << (in_size/1024/1024) << " MB" << endl;
 
    if (in_size > 0)
    {
       try {
-         size_t print_pos = 0;
+         uint64_t print_pos = 0;
          while (true)
          {
             size_t num_read = in.read(buffer, buffer_size);
 
-            size_t mb_pos = in.position() / (1024*1024); // integer truncation
+            uint64_t mb_pos = in.position() / (1024*1024); // integer truncation
 
             if (out && (print_pos < mb_pos || num_read == 0))  // every megabyte
             {
@@ -867,9 +866,9 @@ int main(int argc, char **argv)
             if (config.add_filename_to_row)
                outcsv.cell( "Filename", 8 );
 
-            unsigned int i = 0;
+            size_t i = 0;
             for (; i != config.output_header.size(); ++i)
-               outcsv.cell( config.output_header[i].c_str(), static_cast<unsigned int>(config.output_header[i].size()) );
+               outcsv.cell( config.output_header[i].c_str(), config.output_header[i].size() );
             for (; i < config.output_order.size(); ++i)
                outcsv.cell(NULL, 0);
 

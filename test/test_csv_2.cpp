@@ -11,7 +11,7 @@ using cppcsv::csv_writer;
 class null_builder2 : public cppcsv::per_cell_tag {
 public:
   void begin_row() {}
-  void cell(const char *buf,int len) {}
+  void cell(const char *buf, size_t len) {}
   void end_row() {}
 };
 
