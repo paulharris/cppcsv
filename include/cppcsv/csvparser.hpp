@@ -60,9 +60,11 @@ struct Ecomment {};
 
 
 // compile-time interface switches
+/*
 template <class T> struct BuilderSupported;
 template <> struct BuilderSupported<per_cell_tag> { static const bool ok = true; };
 template <> struct BuilderSupported<per_row_tag>  { static const bool ok = true; };
+*/
 
 template <class Output>
 void call_out_begin_row( Output & out, per_cell_tag & )
@@ -77,7 +79,7 @@ void call_out_cell( Output & out, per_cell_tag & )
 }
 
 template <class Output, typename Char>
-void call_out_cell( Output & out, per_cell_tag &, const Char *buf, int len )
+void call_out_cell( Output & out, per_cell_tag &, const Char *buf, unsigned int len )
 {
    out.cell(buf,len);
 }
@@ -106,7 +108,7 @@ void call_out_begin_row( Output & out, per_row_tag & )
 }
 
 template <class Output, typename Char>
-void call_out_cell( Output & out, per_row_tag &, const Char *buf, int len )
+void call_out_cell( Output & out, per_row_tag &, const Char *buf, unsigned int len )
 {
    // do nothing
 }
@@ -195,7 +197,7 @@ public:
 
   unsigned int last_cell_length() const {
      assert(is_row_open());
-     return cells_buffer.size() - cell_offsets.back();
+     return static_cast<unsigned int>(cells_buffer.size() - cell_offsets.back());
   }
 
   bool is_row_open() const {
@@ -363,7 +365,7 @@ private:
   {
     assert(is_row_open());
     const unsigned int start_off = cell_offsets.back();
-    const unsigned int end_off = cells_buffer.size();
+    const unsigned int end_off = static_cast<unsigned int>(cells_buffer.size());
 
     cell_offsets.push_back(end_off);
 
@@ -389,7 +391,7 @@ private:
      call_out_end_full_row(
            out, out,
            buffer,                  // buffer
-           cell_offsets.size()-1,   // num cells
+           static_cast<unsigned int>(cell_offsets.size()-1),   // num cells
            &cell_offsets[0],        // offsets
            row_file_start_row       // first file row for this row
            );
@@ -423,9 +425,9 @@ private:
 // compile as the templated functions are looking for a char, or assuming a 'container'.
 
 template <class CsvBuilder, class QuoteChars = char, class Separators = char, class CommentChars = char>
-struct csvparser : boost::noncopyable {
+struct csv_parser : boost::noncopyable {
 
-   static const bool builder_supported = csvFSM::BuilderSupported<CsvBuilder>::ok;
+   // static const bool builder_supported = csvFSM::BuilderSupported<CsvBuilder>::ok;
 
    typedef csvFSM::Trans<CsvBuilder> MyTrans;
 
@@ -436,7 +438,7 @@ struct csvparser : boost::noncopyable {
    // You can always quote the whitespace, and that will be kept
 
 // constructor that was used before
-csvparser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
+csv_parser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespace = false, bool collapse_separators = false)
  : qchar(qchar), sep(sep), comment(0),
    comments_must_be_at_start_of_line(true),
    errmsg(NULL),
@@ -449,7 +451,7 @@ csvparser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespac
 
 // constructor with everything
 // note: collect_error_context adds a small amount of overhead
-csvparser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespace, bool collapse_separators, CommentChars comment, bool comments_must_be_at_start_of_line, bool collect_error_context = false)
+csv_parser(CsvBuilder &out, QuoteChars qchar, Separators sep, bool trim_whitespace, bool collapse_separators, CommentChars comment, bool comments_must_be_at_start_of_line, bool collect_error_context = false)
  : qchar(qchar), sep(sep), comment(comment),
    comments_must_be_at_start_of_line(comments_must_be_at_start_of_line),
    errmsg(NULL),
@@ -467,7 +469,7 @@ bool operator()(const std::string &line) // not required to be linewise
 }
 
 
-bool operator()(const char *&buf, int len)
+bool operator()(const char *&buf, size_t len)
 {
    return process_chunk(buf,len);
 }
@@ -494,7 +496,7 @@ bool process_chunk(const std::string &line) // not required to be linewise
 // const char* temp = bufptr;
 // process_chunk(temp,len);
 // if there is an error, then temp is at the character that caused the problem.
-bool process_chunk(const char *&buf, const int len)
+bool process_chunk(const char *&buf, const size_t len)
 {
   char const * const buf_end = buf + len;
 
@@ -568,7 +570,7 @@ bool process_chunk(const char *&buf, const int len)
 // n = fread(..);
 // if (!csv.process(buf,n)) handle error;
 //
-bool process(const char *&buf, const int len)
+bool process(const char *&buf, const size_t len)
 {
    if (len == 0)
       return flush();

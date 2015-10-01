@@ -9,7 +9,7 @@
 
 #define PRINT_OUT 2
 
-using cppcsv::csvparser;
+using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 
 // defined in tst_csv_2.cpp
@@ -129,7 +129,7 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'\'',',');
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg,'\'',',');
   cp(
     "\n"
     "1, 's' , 3,4   a\n"
@@ -158,12 +158,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg,'"',',');
   std::ifstream in;
   open_check("test_dos.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -200,14 +200,14 @@ int main(int argc,char **argv)
   typedef csv_writer< cppcsv::add_dos_cr_out<file_out> > debug_dos;
   debug_dos dbg_dos(file_out(fdos),'\'',',',true);
 
-  cppcsv::csvparser<debug_unix, char,char> cp_unix(dbg_unix,'"',',');
-  cppcsv::csvparser<debug_dos, char,char> cp_dos(dbg_dos,'"',',');
+  cppcsv::csv_parser<debug_unix, char,char> cp_unix(dbg_unix,'"',',');
+  cppcsv::csv_parser<debug_dos, char,char> cp_dos(dbg_dos,'"',',');
 
   std::ifstream in;
   open_check("test_dos.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -246,12 +246,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg,'"',',');
   std::ifstream in;
   open_check("test.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -286,12 +286,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',',true);
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg,'"',',',true);
   std::ifstream in;
   open_check("test.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -325,12 +325,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg,'"',',');
   std::ifstream in;
   open_check("test_bad_separator.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -364,12 +364,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg,'"',',');
   std::ifstream in;
   open_check("test_bad_dos.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -405,12 +405,12 @@ int main(int argc,char **argv)
 
    // this will fail because it only uses single quotes
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg,'"',',');
   std::ifstream in;
   open_check("test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -444,12 +444,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,");
+  cppcsv::csv_parser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,");
   std::ifstream in;
   open_check("test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -483,12 +483,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,", false, false);
+  cppcsv::csv_parser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,", false, false);
   std::ifstream in;
   open_check("test_collapse_separators.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -522,12 +522,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,", false, true);
+  cppcsv::csv_parser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,", false, true);
   std::ifstream in;
   open_check("test_collapse_separators.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -563,12 +563,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', false, true, '#', true);
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg, '"', ',', false, true, '#', true);
   std::ifstream in;
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -604,12 +604,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', true, true, '#', true);
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg, '"', ',', true, true, '#', true);
   std::ifstream in;
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -645,12 +645,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', false, true, '#', false);
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg, '"', ',', false, true, '#', false);
   std::ifstream in;
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -686,12 +686,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', true, true, '#', false);
+  cppcsv::csv_parser<dbg_builder,char,char> cp(dbg, '"', ',', true, true, '#', false);
   std::ifstream in;
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -727,12 +727,12 @@ int main(int argc,char **argv)
   dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<dbg_builder,char,char,std::string> cp(dbg, '"', ',', true, true, "!#", false);
+  cppcsv::csv_parser<dbg_builder,char,char,std::string> cp(dbg, '"', ',', true, true, "!#", false);
   std::ifstream in;
   open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -769,12 +769,12 @@ int main(int argc,char **argv)
 #endif
 
    // trim whitespace, Don't collapse separators
-  cppcsv::csvparser<dbg_builder,char,std::string> cp(dbg, '"', "\t ", true, false);
+  cppcsv::csv_parser<dbg_builder,char,std::string> cp(dbg, '"', "\t ", true, false);
   std::ifstream in;
   open_check("test_whitespace_sep.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -811,12 +811,12 @@ int main(int argc,char **argv)
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser<dbg_builder,char,std::string> cp(dbg, '"', "\t ", true, true);
+  cppcsv::csv_parser<dbg_builder,char,std::string> cp(dbg, '"', "\t ", true, true);
   std::ifstream in;
   open_check("test_whitespace_sep.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -853,12 +853,12 @@ int main(int argc,char **argv)
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser<dbg_builder, char, char> cp(dbg, '"', ',', false, false);
+  cppcsv::csv_parser<dbg_builder, char, char> cp(dbg, '"', ',', false, false);
   std::ifstream in;
   open_check("test_no_last_newline.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -895,12 +895,12 @@ int main(int argc,char **argv)
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser<dbg_builder, char, char> cp(dbg, '"', ',', false, false);
+  cppcsv::csv_parser<dbg_builder, char, char> cp(dbg, '"', ',', false, false);
   std::ifstream in;
   open_check( "test_no_last_newline.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -942,12 +942,12 @@ int main(int argc,char **argv)
   Arr quotes = { '"', '\'' };
   Arr seps   = { ';', ',' };
 
-  cppcsv::csvparser<dbg_builder, Arr,Arr> cp(dbg, quotes, seps);
+  cppcsv::csv_parser<dbg_builder, Arr,Arr> cp(dbg, quotes, seps);
   std::ifstream in;
   open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -978,12 +978,12 @@ int main(int argc,char **argv)
 
   typedef cppcsv::csv_builder_bulk<void (*)(const char*, unsigned int, const unsigned int*, unsigned int)> Builder;
   Builder builder(print_bulk_row);
-  cppcsv::csvparser<Builder,Arr,Arr,char> cp(builder, quotes, seps);
+  cppcsv::csv_parser<Builder,Arr,Arr,char> cp(builder, quotes, seps);
   std::ifstream in;
   open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);
@@ -1008,12 +1008,12 @@ int main(int argc,char **argv)
   Arr seps   = { ';', ',' };
 
   print_bulk_row_t builder;
-  cppcsv::csvparser<print_bulk_row_t,Arr,Arr,char> cp(builder, quotes, seps);
+  cppcsv::csv_parser<print_bulk_row_t,Arr,Arr,char> cp(builder, quotes, seps);
   std::ifstream in;
   open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
-  int length = in.tellg();
+  std::streamoff length = in.tellg();
   in.seekg (0, in.beg);
   char * buffer = new char[length];
   in.read(buffer, length);

@@ -16,7 +16,7 @@
 #include <vector>
 #include <stdexcept>
 
-using cppcsv::csvparser;
+using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 
 using std::pair;
@@ -49,7 +49,7 @@ using std::endl;
 
 static bool str_equal( const char* a, size_t a_len, const char* b, size_t b_len )
 {
-   return a_len == b_len and strncmp(a, b, a_len)==0;
+   return a_len == b_len && strncmp(a, b, a_len)==0;
 }
 
 static bool str_equal( const char* a, const char* b, size_t b_len )
@@ -65,8 +65,8 @@ static unsigned int column_ascii_2_index( const char* str, int len )
    unsigned int colidx = 0;
    for (int i = 0; i < len; ++i)
    {
-      char c = str[c];
-      if (static_cast<int>(c - 'A') < 0 or static_cast<int>(c - 'A') >= 26)
+      char c = str[i];
+      if (static_cast<int>(c - 'A') < 0 || static_cast<int>(c - 'A') >= 26)
          throw runtime_error("Invalid spreadsheet column " + string(str,len));
       colidx = colidx*26 + static_cast<unsigned int>(c - 'A' + 1);
    }
@@ -157,13 +157,13 @@ public:
          switch (state)
          {
             case Begin:
-               if (not str_equal("Add Filename To Row", buf, len))
+               if (!str_equal("Add Filename To Row", buf, len))
                   throw runtime_error("Line should start with 'Add Filename To Row'");
                state = AddFilenameToRow;
                break;
 
             case AddFilenameToRow:
-               if (not str_equal("Files Have Header", buf, len))
+               if (!str_equal("Files Have Header", buf, len))
                   throw runtime_error("Line should start with 'Files Have Header'");
                state = FilesHaveHeader;
                break;
@@ -181,13 +181,13 @@ public:
                break;
 
             case InputHeader:
-               if (not str_equal("Exclude Blank", buf, len))
+               if (!str_equal("Exclude Blank", buf, len))
                   throw runtime_error("Line should start with 'Exclude Blank'");
                state = ExcludeBlank;
                break;
 
             case ExcludeBlank:
-               if (not str_equal("Exclude Text", buf, len))
+               if (!str_equal("Exclude Text", buf, len))
                   throw runtime_error("Line should start with 'Exclude Text'");
                state = ExcludeText;
                break;
@@ -195,25 +195,25 @@ public:
             case ExcludeText:
                if (str_equal("Exclude Text", buf, len))
                   break;   // stay in this state
-               if (not str_equal("Filter Min", buf, len))
+               if (!str_equal("Filter Min", buf, len))
                   throw runtime_error("Line should start with 'Filter Min'");
                state = FilterMin;
                break;
 
             case FilterMin:
-               if (not str_equal("Filter Max", buf, len))
+               if (!str_equal("Filter Max", buf, len))
                   throw runtime_error("Line should start with 'Filter Max'");
                state = FilterMax;
                break;
 
             case FilterMax:
-               if (not str_equal("Column Order", buf, len))
+               if (!str_equal("Column Order", buf, len))
                   throw runtime_error("Line should start with 'Column Order'");
                state = ColumnOrder;
                break;
 
             case ColumnOrder:
-               if (not str_equal("Output Header", buf, len))
+               if (!str_equal("Output Header", buf, len))
                   throw runtime_error("Line should start with 'Output Header'");
                state = OutputHeader;
                break;
@@ -250,7 +250,7 @@ public:
             case ExcludeBlank:
                if (len > 0)
                {
-                  if (has_input_headers and header_column >= input_headers.size())
+                  if (has_input_headers && header_column >= input_headers.size())
                      throw runtime_error("Too many Exclude Blank entries");
                   if (str_equal("TRUE", buf, len))
                      exclude_blanks.push_back(header_column);
@@ -260,7 +260,7 @@ public:
             case ExcludeText:
                if (len > 0)
                {
-                  if (has_input_headers and header_column >= input_headers.size())
+                  if (has_input_headers && header_column >= input_headers.size())
                      throw runtime_error("Too many Exclude Text entries");
                   exclude_texts.push_back( FilterText(header_column, string(begin,len)) );
                }
@@ -269,13 +269,13 @@ public:
             case FilterMin:
                if (len > 0)
                {
-                  if (has_input_headers and header_column >= input_headers.size())
+                  if (has_input_headers && header_column >= input_headers.size())
                      throw runtime_error("Too many FilterMin entries");
 
                   char* parsed = const_cast<char*>(end);
                   errno = 0;
                   filter_mins.push_back( FilterNumber(header_column, strtod(begin, &parsed)) );
-                  if (parsed != end or errno)
+                  if (parsed != end || errno)
                      throw runtime_error("Error parsing FilterMin number '" + string(begin,len) + "'");
                }
                break;
@@ -283,13 +283,13 @@ public:
             case FilterMax:
                if (len > 0)
                {
-                  if (has_input_headers and header_column >= input_headers.size())
+                  if (has_input_headers && header_column >= input_headers.size())
                      throw runtime_error("Too many FilterMax entries");
 
                   char* parsed = const_cast<char*>(end);
                   errno = 0;
                   filter_maxs.push_back( FilterNumber(header_column, strtod(begin, &parsed)) );
-                  if (parsed != end or errno)
+                  if (parsed != end || errno)
                      throw runtime_error("Error parsing FilterMin number '" + string(begin,len) + "'");
                }
                break;
@@ -298,7 +298,7 @@ public:
                {
                   if (len == 0)
                      output_order.push_back(-1);
-                  else if (not has_input_headers)
+                  else if (!has_input_headers)
                   {
                      // if no InputHeaders at all, then use the spreadsheet name styling
                      output_order.push_back( static_cast<int>(column_ascii_2_index(begin, len)) );
@@ -337,9 +337,9 @@ public:
 
 
 
-   bool ensure_loaded()
+   void ensure_loaded()
    {
-      assert(has_input_headers or input_headers.empty());
+      assert(has_input_headers || input_headers.empty());
 
       if (state != End)
          throw runtime_error("Config file did not have all the fields");
@@ -365,7 +365,7 @@ public:
 };
 
 
-// for csvparser to work with FixedString
+// for csv_parser to work with FixedString
 static const char* begin( FixedString const& s )
 {
    return s.begin;
@@ -423,15 +423,14 @@ public:
       if (n > 0)
          return n;
 
-      if (feof(fp))
-         return 0;
-
-      if (ferror(fp))
+      if (!feof(fp) && ferror(fp))
       {
          ostringstream err;
          err << "Error reading from file at position " << pos;
          throw runtime_error(err.str());
       }
+
+	 return 0;
    }
 };
 
@@ -501,7 +500,7 @@ class FilterBuilder : public cppcsv::per_row_tag
    ConfigBuilder const& config;
    CsvWriter & out;
    bool first_row;
-   vector<size_t> map_header_to_file;
+   vector<unsigned int> map_header_to_file;
    string filename;
 
 public:
@@ -516,25 +515,25 @@ public:
 
    void end_full_row( char* buffer, unsigned int num_cells, const unsigned int * offsets, unsigned int file_row )
    {
-      if (first_row and config.files_have_header)
+      if (first_row && config.files_have_header)
       {
          // index what we see from the file
          vector<string> cells;
-         for (size_t i = 0; i != num_cells; ++i)
+         for (unsigned int i = 0; i != num_cells; ++i)
             cells.push_back( string( buffer+offsets[i], offsets[i+1]-offsets[i] ) );
 
-         size_t num_exp = config.input_headers.size();
+		 unsigned int num_exp = static_cast<unsigned int>(config.input_headers.size());
 
          // match the file header to the expected headers
          // for each expected header, store the column index from the file
          map_header_to_file.resize(num_exp);
 
          // find matching header
-         for (size_t i = 0; i != num_exp; ++i)
+         for (unsigned int i = 0; i != num_exp; ++i)
          {
             string const& header = config.input_headers[i];
 
-            size_t j = 0;
+            unsigned int j = 0;
             for (; j != cells.size(); ++j)
                if (header == cells[j])
                   break;
@@ -543,7 +542,7 @@ public:
             {
                ostringstream err;
                err << "Could not find header '" << header << "' in file which has headers:" << endl;
-               for (size_t k = 0; k != cells.size(); ++k)
+               for (unsigned int k = 0; k != cells.size(); ++k)
                   err << cells[k] << endl;
 
                throw runtime_error(err.str());
@@ -560,16 +559,16 @@ public:
          bool pass = true;
 
          // exclude blanks...
-         for (size_t i = 0; pass and i != config.exclude_blanks.size(); ++i)
+         for (unsigned int i = 0; pass && i != config.exclude_blanks.size(); ++i)
          {
             unsigned int col = config.exclude_blanks[i];
             if (config.files_have_header)
                col = map_header_to_file[col];
-            pass = col < num_cells and (offsets[col+1]-offsets[col]) > 0;
+            pass = col < num_cells && (offsets[col+1]-offsets[col]) > 0;
          }
 
          // exclude texts...
-         for (size_t i = 0; pass and i != config.exclude_texts.size(); ++i)
+         for (unsigned int i = 0; pass && i != config.exclude_texts.size(); ++i)
          {
             unsigned int col = config.exclude_texts[i].first;
             if (config.files_have_header)
@@ -579,12 +578,12 @@ public:
             {
                unsigned int len = offsets[col+1]-offsets[col];
                string const& ex = config.exclude_texts[i].second;
-               pass = not str_equal(buffer+offsets[col], len, ex.c_str(), ex.size());
+               pass = !str_equal(buffer+offsets[col], len, ex.c_str(), ex.size());
             }
          }
 
          // filter min...
-         for (size_t i = 0; pass and i != config.filter_mins.size(); ++i)
+         for (unsigned int i = 0; pass && i != config.filter_mins.size(); ++i)
          {
             unsigned int col = config.filter_mins[i].first;
             if (config.files_have_header)
@@ -601,7 +600,7 @@ public:
                char* parsed = const_cast<char*>(end);
                errno = 0;
                double val = strtod(begin, &parsed);
-               if (parsed != end or errno)
+               if (parsed != end || errno)
                   throw runtime_error("Error parsing number '" + string(begin,len) + "'");
 
                pass = (thresh <= val);
@@ -609,7 +608,7 @@ public:
          }
 
          // filter max...
-         for (size_t i = 0; pass and i != config.filter_maxs.size(); ++i)
+         for (unsigned int i = 0; pass && i != config.filter_maxs.size(); ++i)
          {
             unsigned int col = config.filter_maxs[i].first;
             if (config.files_have_header)
@@ -626,7 +625,7 @@ public:
                char* parsed = const_cast<char*>(end);
                errno = 0;
                double val = strtod(begin, &parsed);
-               if (parsed != end or errno)
+               if (parsed != end || errno)
                   throw runtime_error("Error parsing number '" + string(begin,len) + "'");
 
                pass = (val <= thresh);
@@ -639,19 +638,19 @@ public:
             out.begin_row();
 
             if (config.add_filename_to_row)
-               out.cell( filename.c_str(), filename.size() );
+               out.cell( filename.c_str(), static_cast<unsigned int>(filename.size()) );
 
-            size_t i = 0;
+            unsigned int i = 0;
             for (; i != config.output_order.size(); ++i)
             {
                // which input column do we want to output
-               int j = config.output_order[i];
+               unsigned int j = config.output_order[i];
 
                // if we are matching headers, then figure out which FILE header we want
                if (config.files_have_header)
                   j = map_header_to_file[j];
 
-               if (j >= 0 and j < num_cells)
+               if (j >= 0 && j < num_cells)
                   out.cell( buffer+offsets[j], offsets[j+1]-offsets[j] );
                else
                   out.cell( NULL, 0 ); // be correct and specify ALL the columns
@@ -733,7 +732,7 @@ void ensure_csv_ok( const char* filename, Parser & parser )
 template <class Builder>
 void parse_csv_file( const char* filename, Builder & builder, OutputFile const* out )
 {
-   cppcsv::csvparser<Builder, char, char, char> parser(
+   cppcsv::csv_parser<Builder, char, char, char> parser(
          builder, // builder
          '"',     // quotes
          ',',     // delimiters
@@ -762,7 +761,7 @@ void parse_csv_file( const char* filename, Builder & builder, OutputFile const* 
 
             size_t mb_pos = in.position() / (1024*1024); // integer truncation
 
-            if (out and (print_pos < mb_pos or num_read == 0))  // every megabyte
+            if (out && (print_pos < mb_pos || num_read == 0))  // every megabyte
             {
                print_pos = mb_pos;
                cout << "\r" << static_cast<int>((100.0*in.position())/in_size) << " %    "
@@ -861,16 +860,16 @@ int main(int argc, char **argv)
                );
 
          // write the header, IF there is any Output Headers specified
-         if (not config.output_header.empty())
+         if (!config.output_header.empty())
          {
             outcsv.begin_row();
 
             if (config.add_filename_to_row)
                outcsv.cell( "Filename", 8 );
 
-            size_t i = 0;
+            unsigned int i = 0;
             for (; i != config.output_header.size(); ++i)
-               outcsv.cell( config.output_header[i].c_str(), config.output_header[i].size() );
+               outcsv.cell( config.output_header[i].c_str(), static_cast<unsigned int>(config.output_header[i].size()) );
             for (; i < config.output_order.size(); ++i)
                outcsv.cell(NULL, 0);
 

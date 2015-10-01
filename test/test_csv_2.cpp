@@ -5,7 +5,7 @@
 #include <cppcsv/csvwriter.hpp>
 #include <cppcsv/simplecsv.hpp>
 
-using cppcsv::csvparser;
+using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 
 class null_builder2 : public cppcsv::per_cell_tag {
@@ -19,7 +19,7 @@ void do_test_again()
 {
    null_builder2 dbg;
 
-  cppcsv::csvparser<null_builder2,char,char> cp(dbg,'\'',',');
+  cppcsv::csv_parser<null_builder2,char,char> cp(dbg,'\'',',');
   cp(
     "\n"
     "1, 's' , 3,4   a\n"

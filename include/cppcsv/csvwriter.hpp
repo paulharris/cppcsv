@@ -45,7 +45,7 @@ public:
     row_is_open = true;
     col = 0;
   }
-  void cell(const Char *buf,int len) {
+  void cell(const Char *buf, unsigned int len) {
     assert(row_is_open);
     if (col != 0) {
       out(&sep,1);
@@ -62,13 +62,13 @@ public:
       const Char *pos=buf;
       while (len>0) {
         if (*pos==qchar) {
-          out(buf,pos-buf+1); // first qchar
+          out(buf, static_cast<unsigned int>(pos-buf+1)); // first qchar
           buf=pos; // qchar still there! (second one)
         }
         pos++;
         len--;
       }
-      out(buf,pos-buf);
+      out(buf, static_cast<unsigned int>(pos-buf));
 
       out(&qchar,1);
     }
@@ -88,7 +88,7 @@ public:
        ++col;
      }
 
-     if (not skip_newline)
+     if (!skip_newline)
        out(&newline, 1);
   }
 
@@ -100,7 +100,7 @@ public:
   }
 
 private:
-  bool need_quote(const Char *buf,int len) const {
+  bool need_quote(const Char *buf, unsigned int len) const {
      assert(qchar != 0);
 
      static const Char space = Char(' ');
@@ -171,14 +171,14 @@ template <class Output, typename Char = char>
 struct add_dos_cr_out {
   add_dos_cr_out( Output out ) : out(out) {}
 
-  void operator()(const Char *buf,int len) {
+  void operator()(const Char *buf, unsigned int len) {
     bool last_was_cr = false;
     const Char *pos = buf;
     static const Char cr = Char('\r');
 
     while (len>0) {
       if ( (*pos == '\n') && !last_was_cr ) {
-        out(buf, pos-buf); // print what came before newline
+        out(buf, static_cast<unsigned int>(pos-buf)); // print what came before newline
         out(&cr, 1);      // print CR
         buf = pos;         // start from the newline (it'll be printed later)
       }
@@ -189,7 +189,7 @@ struct add_dos_cr_out {
       len--;
     }
 
-    out(buf,pos-buf);
+    out(buf, static_cast<unsigned int>(pos-buf));
   }
 
 private:
@@ -208,7 +208,7 @@ public:
   OutputRef(Ref & b) : out(b) {}
 
   template <class Char>
-  void operator()(const Char *buf,int len) { out(buf,len); }
+  void operator()(const Char *buf, unsigned int len) { out(buf,len); }
 };
 
 template <class Ref>

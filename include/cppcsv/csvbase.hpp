@@ -10,7 +10,7 @@ namespace cppcsv {
     * Library users can create their own virtual base class if required.
     *
 // basic virtual interface for catching the begin/cell/end emissions.
-// You can avoid the virtual calls by templating csvparser on your own builder.
+// You can avoid the virtual calls by templating csv_parser on your own builder.
 template <class Char>
 class csv_builder_t : public per_cell_tag { // abstract base
 public:
@@ -25,7 +25,7 @@ typedef csv_builder_t<char> csv_builder;
 */
 
 
-// This adaptor allows you to use csvparser on a emit-per-row basis
+// This adaptor allows you to use csv_parser on a emit-per-row basis
 // The function attached will be called once per row.
 // This is NOT designed to be inherited from.
 //
