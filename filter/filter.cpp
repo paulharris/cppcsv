@@ -77,6 +77,7 @@ static size_t column_ascii_2_index( const char* str, size_t len )
 
 
 
+/*
 static string index_2_column_ascii(size_t col)
 {
    string colstr;
@@ -88,6 +89,7 @@ static string index_2_column_ascii(size_t col)
    std::reverse(colstr.begin(),colstr.end());
    return colstr;
 }
+*/
 
 
 
@@ -112,11 +114,11 @@ class ConfigBuilder : public cppcsv::per_cell_tag
 
 public:
    ConfigBuilder() :
+      state(Begin),
+      column(0),
       files_have_header(false),
       add_filename_to_row(false),
-      has_input_headers(false),
-      state(Begin),
-      column(0)
+      has_input_headers(false)
    {}
 
    typedef pair<size_t, double> FilterNumber;
@@ -379,8 +381,8 @@ static const char* end( FixedString const& s )
 
 class InputFile
 {
-   FILE * fp;
    uint64_t pos;
+   FILE * fp;
 
    // noncopyable
    InputFile( InputFile const& );
@@ -438,8 +440,8 @@ public:
 
 class OutputFile
 {
-   FILE * fp;
    uint64_t pos;
+   FILE * fp;
 
    // noncopyable
    OutputFile( OutputFile const& );

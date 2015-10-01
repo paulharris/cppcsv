@@ -5,6 +5,8 @@
 #include <cppcsv/csvwriter.hpp>
 #include <cppcsv/simplecsv.hpp>
 
+#include "test_csv_2.hpp"
+
 using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 

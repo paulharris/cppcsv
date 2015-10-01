@@ -1,5 +1,8 @@
 #pragma once
 
+// for size_t
+#include <cstddef>
+
 namespace cppcsv {
 
 

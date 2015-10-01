@@ -7,17 +7,14 @@
 #include <fstream>
 #include <boost/array.hpp>
 
+#include "test_csv_2.hpp"
+
 #define PRINT_OUT 2
 
 using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 
-// defined in tst_csv_2.cpp
-// I am doing this to test that we can use the csv parser in
-// multiple compile units without problems.
-void do_test_again();
-
-void open_check( const char* filename, std::ifstream & in )
+static void open_check( const char* filename, std::ifstream & in )
 {
    in.open(filename);
    if (!in)
@@ -37,7 +34,7 @@ public:
     if (!buf) {
       printf("(null) ");
     } else {
-      printf("[%.*s] ",len,buf);
+      printf("[%.*s] ",static_cast<int>(len),buf);
     }
   }
   void end_row() {
@@ -68,7 +65,7 @@ private:
 // for testing function row interface
 static void print_bulk_row( const char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
 {
-  printf("ROW %u (%u cells): ", file_row, num_cells);
+  printf("ROW %lu (%lu cells): ", file_row, num_cells);
   for (size_t i = 0; i != num_cells; ++i) {
     const char* cell_buffer = buffer + offsets[i];
     size_t len = (offsets[i+1] - offsets[i]);
@@ -76,7 +73,7 @@ static void print_bulk_row( const char* buffer, size_t num_cells, const size_t *
     if (len == 0) {
       printf("(null) ");
     } else {
-      printf("[%.*s] ",len, cell_buffer);
+      printf("[%.*s] ", static_cast<int>(len), cell_buffer);
     }
   }
   printf("\n");
@@ -89,7 +86,7 @@ struct print_bulk_row_t : public cppcsv::per_row_tag
 {
   void end_full_row( const char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
   {
-    printf("ROW %u (%u cells): ", file_row, num_cells);
+    printf("ROW %lu (%lu cells): ", file_row, num_cells);
     for (size_t i = 0; i != num_cells; ++i) {
       const char* cell_buffer = buffer + offsets[i];
       size_t len = (offsets[i+1] - offsets[i]);
@@ -97,7 +94,7 @@ struct print_bulk_row_t : public cppcsv::per_row_tag
       if (len == 0) {
         printf("(null) ");
       } else {
-        printf("[%.*s] ",len, cell_buffer);
+        printf("[%.*s] ", static_cast<int>(len), cell_buffer);
       }
     }
     printf("\n");
@@ -939,8 +936,8 @@ int main(int argc,char **argv)
   // use a boost array instead of a string
   // this should allow the compiler to unroll all of match_char loops completely
   typedef boost::array<char,2> Arr;
-  Arr quotes = { '"', '\'' };
-  Arr seps   = { ';', ',' };
+  Arr quotes = {{ '"', '\'' }};
+  Arr seps   = {{ ';', ',' }};
 
   cppcsv::csv_parser<dbg_builder, Arr,Arr> cp(dbg, quotes, seps);
   std::ifstream in;
@@ -973,8 +970,8 @@ int main(int argc,char **argv)
   // use a boost array instead of a string
   // this should allow the compiler to unroll all of match_char loops completely
   typedef boost::array<char,2> Arr;
-  Arr quotes = { '"', '\'' };
-  Arr seps   = { ';', ',' };
+  Arr quotes = {{ '"', '\'' }};
+  Arr seps   = {{ ';', ',' }};
 
   typedef cppcsv::csv_builder_bulk<void (*)(const char*, size_t, const size_t*, size_t)> Builder;
   Builder builder(print_bulk_row);
@@ -1004,8 +1001,8 @@ int main(int argc,char **argv)
   // use a boost array instead of a string
   // this should allow the compiler to unroll all of match_char loops completely
   typedef boost::array<char,2> Arr;
-  Arr quotes = { '"', '\'' };
-  Arr seps   = { ';', ',' };
+  Arr quotes = {{ '"', '\'' }};
+  Arr seps   = {{ ';', ',' }};
 
   print_bulk_row_t builder;
   cppcsv::csv_parser<print_bulk_row_t,Arr,Arr,char> cp(builder, quotes, seps);

@@ -95,7 +95,7 @@ void Row::set(size_t cidx,const std::string &value)
 
 void Row::dump() const // {{{
 {
-  printf("[%d]:",ridx);
+  printf("[%lu]:",ridx);
 
 //  for (std::map<size_t,Value *>::iterator it=columns.begin(),end=columns.end();it!=end;++it) {
   const size_t clen=size();

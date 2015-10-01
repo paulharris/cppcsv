@@ -96,7 +96,7 @@ install (TARGETS csv_filter
 
 # tests
 if (CPPCSV_TESTS)
-   add_executable(test_csv test/test_csv.cpp test/test_csv_2.cpp)
+   add_executable(test_csv test/test_csv.cpp test/test_csv_2.cpp test/test_csv_2.hpp)
 
    target_link_libraries(test_csv cppcsv)
 
