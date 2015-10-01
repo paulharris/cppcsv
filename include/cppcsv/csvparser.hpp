@@ -59,6 +59,87 @@ struct Edos_cr {};   // DOS carriage return
 struct Ecomment {};
 
 
+// compile-time interface switches
+template <class T> struct BuilderSupported;
+template <> struct BuilderSupported<per_cell_tag> { static const bool ok = true; };
+template <> struct BuilderSupported<per_row_tag>  { static const bool ok = true; };
+
+template <class Output>
+void call_out_begin_row( Output & out, per_cell_tag & )
+{
+   out.begin_row();
+}
+
+template <class Output>
+void call_out_cell( Output & out, per_cell_tag & )
+{
+   out.cell(NULL, 0);
+}
+
+template <class Output, typename Char>
+void call_out_cell( Output & out, per_cell_tag &, const Char *buf, int len )
+{
+   out.cell(buf,len);
+}
+
+
+template <class Output, typename Char>
+void call_out_end_full_row(
+      Output & out, per_cell_tag &,
+      Char* buffer,
+      unsigned int num_cells,
+      const unsigned int * offsets,
+      unsigned int file_row
+      )
+{
+   // just calls end_row()
+   out.end_row();
+}
+
+
+
+// and now for the per-row builders
+template <class Output>
+void call_out_begin_row( Output & out, per_row_tag & )
+{
+   // do nothing
+}
+
+template <class Output, typename Char>
+void call_out_cell( Output & out, per_row_tag &, const Char *buf, int len )
+{
+   // do nothing
+}
+
+
+template <class Output>
+void call_out_cell( Output & out, per_row_tag & )
+{
+   // do nothing
+}
+
+
+template <class Output>
+void call_out_end_row( Output & out, per_row_tag & )
+{
+   // do nothing
+}
+
+template <class Output, typename Char>
+void call_out_end_full_row(
+      Output & out, per_row_tag &,
+      Char* buffer,
+      unsigned int num_cells,
+      const unsigned int * offsets,
+      unsigned int file_row
+      )
+{
+   out.end_full_row(buffer, num_cells, offsets, file_row);
+}
+
+
+
+
 template <class CsvBuilder>
 struct Trans {
   Trans(CsvBuilder &out, bool trim_whitespace, bool collapse_separators ) :
@@ -273,7 +354,7 @@ private:
   {
      assert(not is_row_open());
      cell_offsets.push_back(0);
-     out.begin_row();
+     call_out_begin_row( out, out );
   }
 
 
@@ -289,11 +370,11 @@ private:
     if (has_content) {
       assert(!cells_buffer.empty());
       char* base = &cells_buffer[0];
-      out.cell( base+start_off, end_off-start_off );
+      call_out_cell( out, out, base+start_off, end_off-start_off );
     } else {
       assert(start_off == end_off);
       assert(last_cell_length() == 0);
-      out.cell(NULL,0);
+      call_out_cell(out, out);
     }
   }
 
@@ -305,7 +386,8 @@ private:
      // so they can modify in-place for better efficiency
      char * buffer = (cells_buffer.empty() ? NULL : &cells_buffer[0]);
 
-     out.end_full_row(
+     call_out_end_full_row(
+           out, out,
            buffer,                  // buffer
            cell_offsets.size()-1,   // num cells
            &cell_offsets[0],        // offsets
@@ -340,8 +422,10 @@ private:
 // If you use unsigned char in the template parameters, its likely that it won't
 // compile as the templated functions are looking for a char, or assuming a 'container'.
 
-template <class QuoteChars = char, class Separators = char, class CommentChars = char, class CsvBuilder = csv_builder>
+template <class CsvBuilder, class QuoteChars = char, class Separators = char, class CommentChars = char>
 struct csvparser : boost::noncopyable {
+
+   static const bool builder_supported = csvFSM::BuilderSupported<CsvBuilder>::ok;
 
    typedef csvFSM::Trans<CsvBuilder> MyTrans;
 
@@ -405,6 +489,7 @@ bool process_chunk(const std::string &line) // not required to be linewise
 }
 
 
+
 // note: call this like so
 // const char* temp = bufptr;
 // process_chunk(temp,len);
@@ -462,6 +547,37 @@ bool process_chunk(const char *&buf, const int len)
 }
 
 
+
+// helper function, assumes when len=0 then we need to end the line
+// ie we hit the end of the input file.
+//
+// This will call flush() if len=0
+//
+// Allows you to change code like this:
+//
+// n = fread(..);
+// if (n == 0) {
+//    if (!csv.flush()) handle error;
+// }
+// else {
+//    if (!csv.process_chunk(buf,n)) handle error;
+// }
+//
+//    to:
+//
+// n = fread(..);
+// if (!csv.process(buf,n)) handle error;
+//
+bool process(const char *&buf, const int len)
+{
+   if (len == 0)
+      return flush();
+   return process_chunk(buf, len);
+}
+
+
+
+
 // call this after processing the last chunk
 // this will help when the input data did not finish with a newline
 bool flush()
@@ -476,9 +592,12 @@ bool flush()
 
 
 
+  // note: returns NULL if no error
   const char * error() const { return trans.error_message; }
 
   std::string error_context() const {
+     if (current_column == 0)
+        return std::string();
      return current_row_content + "\n" + std::string(current_column-1,'-') + "^";
   }
 
@@ -528,14 +647,6 @@ private:
    void process_event( Event event ) {
      state = trans.process_event(state, event);
    }
-};
-
-
-struct csvparser_standard : public csvparser<>
-{
-  csvparser_standard( csv_builder & out ) : csvparser<>(out, '"', ',', false, false)
-  {
-  }
 };
 
 

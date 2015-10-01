@@ -5,8 +5,22 @@
 
 namespace cppcsv {
 
-template <typename Output, typename Char = char>
-class csv_writer : public csv_builder_t<Char> {
+// note: methods here are all declared non-virtual,
+// if you want to inherit from a virtual Base, then use
+//
+// csv_writer< Output, char, csv_builder_t<char> >
+//
+// else, use
+// csv_writer< Output, char >
+// which will inherit from EmptyBaseClass and have no virtual methods at all.
+//
+// NOTE: Prior to Oct 2015, this inherited from csv_builder_t by default,
+//       now it inherits from EmptyBaseClass by default.
+
+struct EmptyBaseClass {};
+
+template <typename Output, typename Char = char, class BaseClass = EmptyBaseClass >
+class csv_writer : public BaseClass, public per_cell_tag {
 public:
   csv_writer(Char qchar=Char('"'),Char sep=Char(','),bool smart_quote=false, unsigned int min_columns = 0, bool quote_quotes = true)
     : qchar(qchar),sep(sep),
@@ -26,12 +40,12 @@ public:
       row_is_open(false)
   {}
 
-  virtual void begin_row() {
+  void begin_row() {
     assert(!row_is_open);
     row_is_open = true;
     col = 0;
   }
-  virtual void cell(const Char *buf,int len) {
+  void cell(const Char *buf,int len) {
     assert(row_is_open);
     if (col != 0) {
       out(&sep,1);
@@ -62,7 +76,7 @@ public:
 
   // skip_newline: provided for unusual situations, where if
   // eg only one cell were printed out, we don't want a newline at the end.
-  virtual void end_row(bool skip_newline = false) {
+  void end_row(bool skip_newline = false) {
      assert(row_is_open);
      row_is_open = false;
      static const Char newline = Char('\n');
@@ -181,5 +195,26 @@ struct add_dos_cr_out {
 private:
   Output out;
 };
+
+
+
+
+// for non-copyable outputs
+template <class Ref>
+class OutputRef {
+public:
+  Ref & out;
+
+  OutputRef(Ref & b) : out(b) {}
+
+  template <class Char>
+  void operator()(const Char *buf,int len) { out(buf,len); }
+};
+
+template <class Ref>
+OutputRef<Ref> make_OutputRef( Ref & r )
+{
+   return OutputRef<Ref>(r);
+}
 
 }

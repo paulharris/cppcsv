@@ -2,32 +2,27 @@
 
 namespace cppcsv {
 
+
+   struct per_cell_tag {};
+   struct per_row_tag {};
+
+   /* Discouraging virtual interface to encourage template-based speed.
+    * Library users can create their own virtual base class if required.
+    *
 // basic virtual interface for catching the begin/cell/end emissions.
 // You can avoid the virtual calls by templating csvparser on your own builder.
 template <class Char>
-class csv_builder_t { // abstract base
+class csv_builder_t : public per_cell_tag { // abstract base
 public:
   virtual ~csv_builder_t() {}
 
-  virtual void begin_row() {}
-  virtual void cell( const Char *buf, int len ) =0;  // buf can be NULL
-  virtual void end_row() {}
-
-  // DO NOT OVERRIDE, this is an
-  // Optional interface that csvparser supports,
-  // but other existing csv_builder clients do not.
-  void end_full_row(
-        Char* buffer,
-        unsigned int num_cells,
-        const unsigned int * offsets,  // array[num_cells+1]
-        unsigned int file_row          // row where these cells started
-        )
-  {
-     this->end_row();
-  }
+  virtual void begin_row() = 0;
+  virtual void cell( const Char *buf, int len ) = 0;  // buf can be NULL
+  virtual void end_row() = 0;
 };
 
 typedef csv_builder_t<char> csv_builder;
+*/
 
 
 // This adaptor allows you to use csvparser on a emit-per-row basis
@@ -37,14 +32,11 @@ typedef csv_builder_t<char> csv_builder;
 // Note, the cell() and end_full_row() accepts non-const buffer :)
 
 template <class Function>
-class csv_builder_bulk {
+class csv_builder_bulk : public per_row_tag {
 public:
   Function function;
 
   csv_builder_bulk(Function func) : function(func) {}
-
-  void begin_row() {}   // does nothing
-  void cell( char *buf, int len ) {}   // does nothing
 
   // this calls the attached function
   // note that there is (num_cells+1) offsets,

@@ -8,6 +8,20 @@
 namespace cppcsv {
 namespace SimpleCSV {
 
+
+   // interface that SimpleCSV expects to use
+class csv_builder : public per_cell_tag { // abstract base
+public:
+  virtual ~csv_builder() {}
+
+  virtual void begin_row() = 0;
+  virtual void cell( const char *buf, int len ) = 0;  // buf can be NULL
+  virtual void end_row() = 0;
+};
+
+
+
+
 class Table;
 class Row;
 class Value {
@@ -94,12 +108,12 @@ private:
   std::vector<Row *> rows;  // CPP11:  std::unique_ptr!   OR  by-value(Row moveable)?
 };
 
-class builder : public csv_builder {
+class builder : public per_cell_tag {
 public:
   builder(Table &result,bool first_is_header=false);
-  virtual void begin_row();
-  virtual void cell(const char *buf,int len);
-  virtual void end_row();
+  void begin_row();
+  void cell(const char *buf,int len);
+  void end_row();
 private:
   Table &result;
   Row *row;

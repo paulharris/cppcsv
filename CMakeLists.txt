@@ -59,6 +59,16 @@ include_directories (include)
 # endif (CPPCSV_SHARED)
 
 
+# A CSV filter/combiner program
+add_executable(csv_filter filter/filter.cpp)
+target_link_libraries(csv_filter cppcsv)
+install (TARGETS csv_filter
+   ARCHIVE DESTINATION lib
+   LIBRARY DESTINATION lib
+   RUNTIME DESTINATION bin
+   )
+
+
 # tests
 if (CPPCSV_TESTS)
    add_executable(test_csv test/test_csv.cpp test/test_csv_2.cpp)

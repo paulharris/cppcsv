@@ -9,7 +9,6 @@
 
 #define PRINT_OUT 2
 
-using cppcsv::csv_builder;
 using cppcsv::csvparser;
 using cppcsv::csv_writer;
 
@@ -18,36 +17,39 @@ using cppcsv::csv_writer;
 // multiple compile units without problems.
 void do_test_again();
 
-void check( std::istream & in )
+void open_check( const char* filename, std::ifstream & in )
 {
+   in.open(filename);
    if (!in)
    {
-      printf("Could not open file");
+      printf("Could not open file %s\n", filename);
       exit(1);
    }
 }
 
 
-class debug_builder : public csv_builder {
+class debug_builder : public cppcsv::per_cell_tag {
 public:
-  virtual void begin_row() {
+  void begin_row() {
     printf("begin_row\n");
   }
-  virtual void cell(const char *buf,int len) {
+  void cell(const char *buf,int len) {
     if (!buf) {
       printf("(null) ");
     } else {
       printf("[%.*s] ",len,buf);
     }
   }
-  virtual void end_row() {
+  void end_row() {
     printf("end_row\n");
   }
 };
 
-class null_builder : public csv_builder {
+class null_builder : public cppcsv::per_cell_tag {
 public:
-  virtual void cell(const char *buf,int len) {}
+  void begin_row() {}
+  void cell(const char *buf,int len) {}
+  void end_row() {}
 };
 
 struct file_out {
@@ -83,11 +85,8 @@ static void print_bulk_row( const char* buffer, unsigned int num_cells, const un
 
 
 // for testing functor row interface
-struct print_bulk_row_t
+struct print_bulk_row_t : public cppcsv::per_row_tag
 {
-  void begin_row() {}   // does nothing
-  void cell( const char *buf, int len ) {}   // does nothing
-
   void end_full_row( const char* buffer, unsigned int num_cells, const unsigned int * offsets, unsigned int file_row )
   {
     printf("ROW %u (%u cells): ", file_row, num_cells);
@@ -121,13 +120,16 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg,'\'',',');
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'\'',',');
   cp(
     "\n"
     "1, 's' , 3,4   a\n"
@@ -147,15 +149,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg,'"',',');
-  std::ifstream in("test_dos.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  std::ifstream in;
+  open_check("test_dos.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -188,14 +193,18 @@ int main(int argc,char **argv)
 {
   FILE * funix = fopen("out_test_dos_as_unix.csv","wb");
   FILE * fdos = fopen("out_test_dos_as_dos.csv","wb");
-  csv_writer<file_out> dbg_unix(file_out(funix),'\'',',',true);
-  csv_writer< cppcsv::add_dos_cr_out<file_out> > dbg_dos(file_out(fdos),'\'',',',true);
 
-  cppcsv::csvparser<char,char> cp_unix(dbg_unix,'"',',');
-  cppcsv::csvparser<char,char> cp_dos(dbg_dos,'"',',');
+  typedef csv_writer<file_out> debug_unix;
+  debug_unix dbg_unix(file_out(funix),'\'',',',true);
 
-  std::ifstream in("test_dos.csv");
-  check(in);
+  typedef csv_writer< cppcsv::add_dos_cr_out<file_out> > debug_dos;
+  debug_dos dbg_dos(file_out(fdos),'\'',',',true);
+
+  cppcsv::csvparser<debug_unix, char,char> cp_unix(dbg_unix,'"',',');
+  cppcsv::csvparser<debug_dos, char,char> cp_dos(dbg_dos,'"',',');
+
+  std::ifstream in;
+  open_check("test_dos.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -228,15 +237,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg,'"',',');
-  std::ifstream in("test.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  std::ifstream in;
+  open_check("test.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -265,15 +277,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg,'"',',',true);
-  std::ifstream in("test.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',',true);
+  std::ifstream in;
+  open_check("test.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -301,15 +316,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg,'"',',');
-  std::ifstream in("test_bad_separator.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  std::ifstream in;
+  open_check("test_bad_separator.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -337,15 +355,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg,'"',',');
-  std::ifstream in("test_bad_dos.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  std::ifstream in;
+  open_check("test_bad_dos.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -373,17 +394,20 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
    // this will fail because it only uses single quotes
 
-  cppcsv::csvparser<char,char> cp(dbg,'"',',');
-  std::ifstream in("test_multiple_quotes.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg,'"',',');
+  std::ifstream in;
+  open_check("test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -411,15 +435,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,");
-  std::ifstream in("test_multiple_quotes.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,");
+  std::ifstream in;
+  open_check("test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -447,15 +474,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,", false, false);
-  std::ifstream in("test_collapse_separators.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,", false, false);
+  std::ifstream in;
+  open_check("test_collapse_separators.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -483,15 +513,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<std::string,std::string> cp(dbg,"\"'",";,", false, true);
-  std::ifstream in("test_collapse_separators.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder, std::string,std::string> cp(dbg,"\"'",";,", false, true);
+  std::ifstream in;
+  open_check("test_collapse_separators.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -521,15 +554,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', true);
-  std::ifstream in("test_comment.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', false, true, '#', true);
+  std::ifstream in;
+  open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -559,15 +595,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg, '"', ',', true, true, '#', true);
-  std::ifstream in("test_comment.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', true, true, '#', true);
+  std::ifstream in;
+  open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -597,15 +636,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg, '"', ',', false, true, '#', false);
-  std::ifstream in("test_comment.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', false, true, '#', false);
+  std::ifstream in;
+  open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -635,15 +677,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char> cp(dbg, '"', ',', true, true, '#', false);
-  std::ifstream in("test_comment.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char> cp(dbg, '"', ',', true, true, '#', false);
+  std::ifstream in;
+  open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -673,15 +718,18 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
-  cppcsv::csvparser<char,char,std::string> cp(dbg, '"', ',', true, true, "!#", false);
-  std::ifstream in("test_comment.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,char,std::string> cp(dbg, '"', ',', true, true, "!#", false);
+  std::ifstream in;
+  open_check("test_comment.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -711,16 +759,19 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
    // trim whitespace, Don't collapse separators
-  cppcsv::csvparser<char,std::string> cp(dbg, '"', "\t ", true, false);
-  std::ifstream in("test_whitespace_sep.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,std::string> cp(dbg, '"', "\t ", true, false);
+  std::ifstream in;
+  open_check("test_whitespace_sep.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -750,16 +801,19 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser<char,std::string> cp(dbg, '"', "\t ", true, true);
-  std::ifstream in("test_whitespace_sep.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder,char,std::string> cp(dbg, '"', "\t ", true, true);
+  std::ifstream in;
+  open_check("test_whitespace_sep.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -789,16 +843,19 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser_standard cp(dbg);
-  std::ifstream in("test_no_last_newline.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder, char, char> cp(dbg, '"', ',', false, false);
+  std::ifstream in;
+  open_check("test_no_last_newline.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -828,16 +885,19 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
    // trim whitespace, collapse separators
-  cppcsv::csvparser_standard cp(dbg);
-  std::ifstream in("test_no_last_newline.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder, char, char> cp(dbg, '"', ',', false, false);
+  std::ifstream in;
+  open_check( "test_no_last_newline.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -867,10 +927,13 @@ int main(int argc,char **argv)
 #if (PRINT_OUT==1)
   SimpleCSV::Table tbl;
   SimpleCSV::builder dbg(tbl);
+  typedef SimpleCSV::builder dbg_builder;
 #elif (PRINT_OUT==2)
-  debug_builder dbg;
+  typedef debug_builder dbg_builder;
+  dbg_builder dbg;
 #else
-   null_builder dbg;
+  typedef null_builder dbg_builder;
+  dbg_builder dbg;
 #endif
 
   // use a boost array instead of a string
@@ -879,9 +942,9 @@ int main(int argc,char **argv)
   Arr quotes = { '"', '\'' };
   Arr seps   = { ';', ',' };
 
-  cppcsv::csvparser<Arr,Arr> cp(dbg, quotes, seps);
-  std::ifstream in("test_multiple_quotes.csv");
-  check(in);
+  cppcsv::csvparser<dbg_builder, Arr,Arr> cp(dbg, quotes, seps);
+  std::ifstream in;
+  open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -915,9 +978,9 @@ int main(int argc,char **argv)
 
   typedef cppcsv::csv_builder_bulk<void (*)(const char*, unsigned int, const unsigned int*, unsigned int)> Builder;
   Builder builder(print_bulk_row);
-  cppcsv::csvparser<Arr,Arr,char,Builder> cp(builder, quotes, seps);
-  std::ifstream in("test_multiple_quotes.csv");
-  check(in);
+  cppcsv::csvparser<Builder,Arr,Arr,char> cp(builder, quotes, seps);
+  std::ifstream in;
+  open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
@@ -945,9 +1008,9 @@ int main(int argc,char **argv)
   Arr seps   = { ';', ',' };
 
   print_bulk_row_t builder;
-  cppcsv::csvparser<Arr,Arr,char,print_bulk_row_t> cp(builder, quotes, seps);
-  std::ifstream in("test_multiple_quotes.csv");
-  check(in);
+  cppcsv::csvparser<print_bulk_row_t,Arr,Arr,char> cp(builder, quotes, seps);
+  std::ifstream in;
+  open_check( "test_multiple_quotes.csv", in);
 
   in.seekg (0, in.end);
   int length = in.tellg();
