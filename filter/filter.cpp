@@ -452,13 +452,11 @@ public:
       pos(0),
       fp(NULL)
    {
-      /*
       if (FILE * test = fopen(fn, "rb"))
       {
          fclose(test);
          throw runtime_error("Output file already exists, will not overwrite for safety. Aborting.");
       }
-      */
 
       fp = fopen(fn, "wb");
       if (fp == NULL)
