@@ -483,6 +483,18 @@ void reset_cursor_location()
 }
 
 
+size_t get_current_row() const
+{
+   return current_row;
+}
+
+
+size_t get_current_column() const
+{
+   return current_column;
+}
+
+
 
 bool process_chunk(const std::string &line) // not required to be linewise
 {

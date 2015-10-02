@@ -135,7 +135,7 @@ public:
    vector< pair<size_t, double> > filter_mins;     // remembers column --> limit
    vector< pair<size_t, double> > filter_maxs;     // remembers column --> limit
 
-   vector<size_t> output_order;  // as many as they like. -1 --> output a blank column
+   vector<size_t> output_order_1; // 0=blank, 1+ is a column. as many as they like.
    vector<string> output_header; // as many as output_header
 
 
@@ -145,6 +145,7 @@ public:
    }
 
 
+   size_t get_current_row() { return 0; } // don't care
 
 
    void cell(const char* buf, size_t len)
@@ -175,6 +176,8 @@ public:
                   state = InputHeader;
                   has_input_headers = true;
                }
+               else if (files_have_header)
+                  throw runtime_error("Files have headers, so Line should start with 'Input Header'");
                else if (str_equal("Exclude Blank", buf, len))
                   state = ExcludeBlank;
                else
@@ -182,6 +185,10 @@ public:
                break;
 
             case InputHeader:
+               // trim blank input headers at the end
+               while (!input_headers.empty() && input_headers.back().empty())
+                  input_headers.pop_back();
+
                if (!str_equal("Exclude Blank", buf, len))
                   throw runtime_error("Line should start with 'Exclude Blank'");
                state = ExcludeBlank;
@@ -237,11 +244,13 @@ public:
                throw logic_error("bad state: Begin");
 
             case AddFilenameToRow:
-               add_filename_to_row = str_equal("TRUE", buf, len);
+               if (column == 1)
+                  add_filename_to_row = str_equal("TRUE", buf, len);
                break;
 
             case FilesHaveHeader:
-               files_have_header = str_equal("TRUE", buf, len);
+               if (column == 1)
+                  files_have_header = str_equal("TRUE", buf, len);
                break;
 
             case InputHeader:
@@ -251,7 +260,7 @@ public:
             case ExcludeBlank:
                if (len > 0)
                {
-                  if (has_input_headers && header_column >= input_headers.size())
+                  if (files_have_header && header_column >= input_headers.size())
                      throw runtime_error("Too many Exclude Blank entries");
                   if (str_equal("TRUE", buf, len))
                      exclude_blanks.push_back(header_column);
@@ -261,7 +270,7 @@ public:
             case ExcludeText:
                if (len > 0)
                {
-                  if (has_input_headers && header_column >= input_headers.size())
+                  if (files_have_header && header_column >= input_headers.size())
                      throw runtime_error("Too many Exclude Text entries");
                   exclude_texts.push_back( FilterText(header_column, string(begin,len)) );
                }
@@ -270,7 +279,7 @@ public:
             case FilterMin:
                if (len > 0)
                {
-                  if (has_input_headers && header_column >= input_headers.size())
+                  if (files_have_header && header_column >= input_headers.size())
                      throw runtime_error("Too many FilterMin entries");
 
                   char* parsed = const_cast<char*>(end);
@@ -284,7 +293,7 @@ public:
             case FilterMax:
                if (len > 0)
                {
-                  if (has_input_headers && header_column >= input_headers.size())
+                  if (files_have_header && header_column >= input_headers.size())
                      throw runtime_error("Too many FilterMax entries");
 
                   char* parsed = const_cast<char*>(end);
@@ -298,11 +307,14 @@ public:
             case ColumnOrder:
                {
                   if (len == 0)
-                     output_order.push_back(-1);
+                     output_order_1.push_back(0);
                   else if (!has_input_headers)
                   {
                      // if no InputHeaders at all, then use the spreadsheet name styling
-                     output_order.push_back( column_ascii_2_index(begin, len) );
+                     size_t col = column_ascii_2_index(begin, len);
+                     if (col == 0)
+                        throw runtime_error("Column A is not valid, refer to columns from B onwards (ie its position in config csv)");
+                     output_order_1.push_back( column_ascii_2_index(begin, len)+1-1 ); // +1 for _1 offset.  -1 to shift B to A.
                   }
                   else
                   {
@@ -310,7 +322,7 @@ public:
                      vector<string>::iterator found = find(input_headers.begin(), input_headers.end(), h);
                      if (found == input_headers.end())
                         throw runtime_error("Could not find Input Header named '" + h + "'");
-                     output_order.push_back( distance(input_headers.begin(), found) );
+                     output_order_1.push_back( 1+distance(input_headers.begin(), found) );
                   }
                }
                break;
@@ -340,6 +352,14 @@ public:
 
    void ensure_loaded()
    {
+      // trim the output_order_1 -- remove empty cells at the end
+      while (!output_order_1.empty() && output_order_1.back() == 0)
+         output_order_1.pop_back();
+
+      // trim output_header
+      while (!output_header.empty() && output_header.back().empty())
+         output_header.pop_back();
+
       assert(has_input_headers || input_headers.empty());
 
       if (state != End)
@@ -489,6 +509,27 @@ public:
 
 
 
+static double parse_number( const char* str, size_t len )
+{
+   if (len+1 >= 1024)
+      throw runtime_error("Cell too large to parse");
+
+   char temp[1024];
+   memcpy(temp, str, len);
+   temp[len] = '\0';
+
+   const char* begin = temp;
+   const char* end = begin+len;
+
+   char* parsed = const_cast<char*>(end);
+   errno = 0;
+   double val = strtod(begin, &parsed);
+   if (parsed != end || errno)
+      throw runtime_error("Error parsing number '" + string(begin,len) + "'");
+   return val;
+}
+
+
 
 typedef csv_writer< cppcsv::add_dos_cr_out< cppcsv::OutputRef<OutputFile> > > CsvWriter;
 
@@ -512,6 +553,12 @@ public:
    }
 
 
+   size_t get_current_row()
+   {
+      return out.get_current_row();
+   }
+
+
    void end_full_row( char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
    {
       if (first_row && config.files_have_header)
@@ -521,7 +568,7 @@ public:
          for (size_t i = 0; i != num_cells; ++i)
             cells.push_back( string( buffer+offsets[i], offsets[i+1]-offsets[i] ) );
 
-		 size_t num_exp = config.input_headers.size();
+          size_t num_exp = config.input_headers.size();
 
          // match the file header to the expected headers
          // for each expected header, store the column index from the file
@@ -592,16 +639,7 @@ public:
             {
                size_t len = offsets[col+1]-offsets[col];
                double thresh = config.filter_mins[i].second;
-
-               const char* begin = buffer+offsets[col];
-               const char* end = begin+len;
-
-               char* parsed = const_cast<char*>(end);
-               errno = 0;
-               double val = strtod(begin, &parsed);
-               if (parsed != end || errno)
-                  throw runtime_error("Error parsing number '" + string(begin,len) + "'");
-
+               double val = parse_number( buffer+offsets[col], len );
                pass = (thresh <= val);
             }
          }
@@ -617,16 +655,7 @@ public:
             {
                size_t len = offsets[col+1]-offsets[col];
                double thresh = config.filter_maxs[i].second;
-
-               const char* begin = buffer+offsets[col];
-               const char* end = begin+len;
-
-               char* parsed = const_cast<char*>(end);
-               errno = 0;
-               double val = strtod(begin, &parsed);
-               if (parsed != end || errno)
-                  throw runtime_error("Error parsing number '" + string(begin,len) + "'");
-
+               double val = parse_number( buffer+offsets[col], len );
                pass = (val <= thresh);
             }
          }
@@ -640,17 +669,21 @@ public:
                out.cell( filename.c_str(), filename.size() );
 
             size_t i = 0;
-            for (; i != config.output_order.size(); ++i)
+            for (; i != config.output_order_1.size(); ++i)
             {
                // which input column do we want to output
-               size_t j = config.output_order[i];
+               size_t j = config.output_order_1[i];
 
+               // j=0 is BLANK
                // if we are matching headers, then figure out which FILE header we want
-               if (config.files_have_header)
-                  j = map_header_to_file[j];
+               if (j > 0 && config.files_have_header)
+                  j = map_header_to_file[j-1]+1;   // +1 to keep j=0 --> BLANK
 
-               if (j >= 0 && j < num_cells)
-                  out.cell( buffer+offsets[j], offsets[j+1]-offsets[j] );
+               if (j > 0 && j-1 < num_cells)
+               {
+                  size_t cell = j-1;
+                  out.cell( buffer+offsets[cell], offsets[cell+1]-offsets[cell] );
+               }
                else
                   out.cell( NULL, 0 ); // be correct and specify ALL the columns
             }
@@ -706,6 +739,8 @@ public:
       out.end_row();
       throw done_exception();
    }
+
+   size_t get_current_row() { return 0; } // don't care
 };
 
 
@@ -765,7 +800,8 @@ void parse_csv_file( const char* filename, Builder & builder, OutputFile const* 
                print_pos = mb_pos;
                cout << "\r" << static_cast<int>((100.0*in.position())/in_size) << " %    "
                   << mb_pos << " MB"
-                  << " --> " << (out->position()/1024/1024) << " MB";
+                  << " --> " << (out->position()/1024/1024) << " MB    "
+                  << parser.get_current_row() << " rows --> " << builder.get_current_row() << " rows";
                cout.flush();
             }
 
@@ -778,10 +814,7 @@ void parse_csv_file( const char* filename, Builder & builder, OutputFile const* 
          }
 
          if (out)
-         {
-            cout << "\r                                          \r";
-            cout.flush();
-         }
+            cout << endl;
       }
       catch (...) {
          // ensure the last progress printout can still be seen
@@ -869,7 +902,7 @@ int main(int argc, char **argv)
             size_t i = 0;
             for (; i != config.output_header.size(); ++i)
                outcsv.cell( config.output_header[i].c_str(), config.output_header[i].size() );
-            for (; i < config.output_order.size(); ++i)
+            for (; i < config.output_order_1.size(); ++i)
                outcsv.cell(NULL, 0);
 
             outcsv.end_row();
@@ -882,7 +915,7 @@ int main(int argc, char **argv)
             parse_csv_file( argv[arg], filter, &outfile );
          }
 
-         cout << "Wrote " << outfile.position()/1024/1024 << " MB" << endl;
+         cout << "Wrote " << outfile.position()/1024/1024 << " MB   " << outcsv.get_current_row() << " rows" << endl;
 
          return 0;
       }

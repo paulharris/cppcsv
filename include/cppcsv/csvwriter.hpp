@@ -37,13 +37,15 @@ public:
 		quote_quotes(quote_quotes),
       col(0),
       min_columns(min_columns),
-      row_is_open(false)
+      row_is_open(false),
+      current_row(0)
   {}
 
   void begin_row() {
     assert(!row_is_open);
     row_is_open = true;
     col = 0;
+    ++current_row;
   }
   void cell(const Char *buf, size_t len) {
     assert(row_is_open);
@@ -97,6 +99,11 @@ public:
   // call this at the end, to check for correct usage
   void finish() {
      assert(!row_is_open);
+  }
+
+  size_t get_current_row() const
+  {
+     return current_row;
   }
 
 private:
@@ -161,6 +168,7 @@ private:
   size_t min_columns;
 
   bool row_is_open;
+  size_t current_row;
 };
 
 
