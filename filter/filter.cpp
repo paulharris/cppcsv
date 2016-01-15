@@ -16,6 +16,17 @@
 #include <vector>
 #include <stdexcept>
 
+// for file_exists
+#ifdef _MSC_VER  // Microsoft C++
+   // for GetFileAttributesA
+#  define WIN32_LEAN_AND_MEAN 1
+#  include <windows.h>
+#else
+#  include <sys/types.h>
+#  include <sys/stat.h>
+#  include <unistd.h>
+#endif
+
 using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 
@@ -40,10 +51,24 @@ using std::endl;
 #ifdef _MSC_VER  // Microsoft C++
 #  define fseek64 _fseeki64
 #  define ftell64 _ftelli64
+#  define snprintf sprintf_s
 #else
 #  define fseek64 fseeko
 #  define ftell64 ftello
 #endif
+ 
+
+
+
+// Return true if a file or directory (UTF-8 without trailing /) exists.
+static bool file_exists(const char* filename) {
+#ifdef _MSC_VER  // Microsoft C++
+  return GetFileAttributesA(filename) != INVALID_FILE_ATTRIBUTES;
+#else
+  struct stat sb;
+  return !lstat(filename, &sb);
+#endif
+}
 
 
 
@@ -761,10 +786,19 @@ void ensure_csv_ok( const char* filename, Parser & parser )
 }
 
 
+// returns file size
+// out is used for printing output file position
+static uint64_t discover_csv_file( const char* filename )
+{
+   InputFile in(filename);
+   cout << "Found file: " << filename << "  " << (in.size()/1024/1024) << " MB" << endl;
+   return in.size();
+}
+
 
 // out is used for printing output file position
 template <class Builder>
-void parse_csv_file( const char* filename, Builder & builder, OutputFile const* out )
+uint64_t parse_csv_file( const char* filename, Builder & builder, OutputFile const* out, uint64_t current_in_read, uint64_t total_in_size )
 {
    cppcsv::csv_parser<Builder, char, char, char> parser(
          builder, // builder
@@ -794,14 +828,16 @@ void parse_csv_file( const char* filename, Builder & builder, OutputFile const* 
             size_t num_read = in.read(buffer, buffer_size);
 
             uint64_t mb_pos = in.position() / (1024*1024); // integer truncation
+            uint64_t total_mb_pos = (current_in_read + in.position()) / (1024*1024); // integer truncation
 
             if (out && (print_pos < mb_pos || num_read == 0))  // every megabyte
             {
                print_pos = mb_pos;
-               cout << "\r" << static_cast<int>((100.0*in.position())/in_size) << " %    "
-                  << mb_pos << " MB"
-                  << " --> " << (out->position()/1024/1024) << " MB    "
-                  << parser.get_current_row() << " rows --> " << builder.get_current_row() << " rows";
+               cout << "\r"
+                  << static_cast<int>((100.0*(current_in_read+in.position())/total_in_size)) << "%"
+                  << "   " << total_mb_pos << " MB "
+                  << " --> " << (out->position()/1024/1024) << " MB (" << builder.get_current_row() << " rows)"
+                  << "    File read: " << mb_pos << " MB, " << static_cast<int>((100.0*in.position())/in_size) << "%, " << parser.get_current_row() << " rows";
                cout.flush();
             }
 
@@ -823,15 +859,24 @@ void parse_csv_file( const char* filename, Builder & builder, OutputFile const* 
          throw;
       }
    }
+
+   return current_in_read + in_size;
 }
 
 
 
 struct usage_exception {};
 
+static const int MIN_STEP = 1;
+static const int MAX_STEP = 9999;
+static const int STEP_STR_BUFFER_LEN = 5;
+
 static void usage( char** argv )
 {
    cerr << "USAGE: " << argv[0] << " FILTER config_file output_file input_file1 input_file2 input_file3 ..." << endl;
+   cerr << endl;
+   cerr << "or USAGE: " << argv[0] << " FILTER_STEPS output_file input_file_base config_file_1 config_file_2 ..." << endl;
+   cerr << "   note: program will automatically scan for input files named input_file_baseN.csv (N is " << MIN_STEP << " to " << MAX_STEP << ")" << endl;
    cerr << endl;
    cerr << "or USAGE: " << argv[0] << " HEADERS input_file1 input_file2 input_file3 ..." << endl;
 }
@@ -858,7 +903,7 @@ int main(int argc, char **argv)
          {
             try {
                cout << argv[arg] << endl;
-               parse_csv_file( argv[arg], printer, NULL );
+               parse_csv_file( argv[arg], printer, NULL, 0, 0 );
             }
             catch (ExtractHeaderBuilder::done_exception &) {
                // use exceptions to escape early from the parsing
@@ -877,7 +922,7 @@ int main(int argc, char **argv)
          // load config
          ConfigBuilder config;
          cout << "Loading config file" << endl;
-         parse_csv_file( argv[2], config, NULL );
+         parse_csv_file( argv[2], config, NULL, 0, 0 );
          config.ensure_loaded();
 
          cout << "Opening output file " << argv[3] << endl;
@@ -909,13 +954,99 @@ int main(int argc, char **argv)
          }
 
          // begin the stream
+         uint64_t total_size = 0;
+         for (int arg = 4; arg < argc; ++arg)
+            total_size += discover_csv_file( argv[arg] );
+
+         uint64_t current_in_size = 0;
          for (int arg = 4; arg < argc; ++arg)
          {
             FilterBuilder filter( config, outcsv, argv[arg] );
-            parse_csv_file( argv[arg], filter, &outfile );
+            current_in_size = parse_csv_file( argv[arg], filter, &outfile, current_in_size, total_size );
          }
 
          cout << "Wrote " << outfile.position()/1024/1024 << " MB   " << outcsv.get_current_row() << " rows" << endl;
+
+         return 0;
+      }
+
+      else if (string("FILTER_STEPS") == argv[1])
+      {
+         if (argc < 5)
+            throw usage_exception();
+
+         const char * const output_filename = argv[2];
+         const string input_filename_base = argv[3];
+         static const int first_config_file_idx = 4;
+
+         cout << "Opening output file: " << output_filename << endl;
+         OutputFile outfile(output_filename);
+
+         CsvWriter outcsv(
+               cppcsv::make_OutputRef(outfile),
+               '"',
+               ',',
+               true  // do smart quoting
+               );
+
+         // scan and discover files
+         uint64_t total_size = 0;
+         for (int input_idx = MIN_STEP; input_idx <= MAX_STEP; ++input_idx)
+         {
+            char idxstr[STEP_STR_BUFFER_LEN];
+            int idxlen = snprintf(idxstr, STEP_STR_BUFFER_LEN, "%d", input_idx);
+            if (idxlen < 0 || idxlen >= STEP_STR_BUFFER_LEN) throw logic_error("Buffer too short for index");
+            string input_filename = input_filename_base + idxstr + ".csv";
+            if (file_exists(input_filename.c_str()))
+               total_size += discover_csv_file( input_filename.c_str() );
+         }
+
+         for (int arg = first_config_file_idx; arg < argc; ++arg)
+         {
+            // load config
+            ConfigBuilder config;
+            cout << " Loading config file: " << argv[arg] << endl;
+            parse_csv_file( argv[arg], config, NULL, 0, 0 );
+            config.ensure_loaded();
+
+            // write the header, IF there is any Output Headers specified
+            // and ONLY if we are on the first config file
+            if (arg == first_config_file_idx and !config.output_header.empty())
+            {
+               outcsv.begin_row();
+
+               if (config.add_filename_to_row)
+                  outcsv.cell( "Filename", 8 );
+
+               size_t i = 0;
+               for (; i != config.output_header.size(); ++i)
+                  outcsv.cell( config.output_header[i].c_str(), config.output_header[i].size() );
+               for (; i < config.output_order_1.size(); ++i)
+                  outcsv.cell(NULL, 0);
+
+               outcsv.end_row();
+
+               cout << " Wrote header line " << " --> " << outcsv.get_current_row() << " rows";
+            }
+
+            // begin the stream
+            uint64_t current_in_size = 0;
+            for (int input_idx = MIN_STEP; input_idx <= MAX_STEP; ++input_idx)
+            {
+               char idxstr[STEP_STR_BUFFER_LEN];
+               int idxlen = snprintf(idxstr, STEP_STR_BUFFER_LEN, "%d", input_idx);
+               if (idxlen < 0 || idxlen >= STEP_STR_BUFFER_LEN) throw logic_error("Buffer too short for index");
+               string input_filename = input_filename_base + idxstr + ".csv";
+               if (file_exists(input_filename.c_str()))
+               {
+                  cout << "  Opening input file: " << input_filename << endl;
+                  FilterBuilder filter( config, outcsv, input_filename );
+                  current_in_size = parse_csv_file( input_filename.c_str(), filter, &outfile, current_in_size, total_size );
+               }
+            }
+
+            cout << "Wrote " << outfile.position()/1024/1024 << " MB   " << outcsv.get_current_row() << " rows" << endl;
+         }
 
          return 0;
       }
