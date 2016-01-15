@@ -65,7 +65,7 @@ private:
 // for testing function row interface
 static void print_bulk_row( const char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
 {
-  printf("ROW %lu (%lu cells): ", file_row, num_cells);
+  printf("ROW %llu (%llu cells): ", (unsigned long long)file_row, (unsigned long long)num_cells);
   for (size_t i = 0; i != num_cells; ++i) {
     const char* cell_buffer = buffer + offsets[i];
     size_t len = (offsets[i+1] - offsets[i]);
@@ -86,7 +86,7 @@ struct print_bulk_row_t : public cppcsv::per_row_tag
 {
   void end_full_row( const char* buffer, size_t num_cells, const size_t * offsets, size_t file_row )
   {
-    printf("ROW %lu (%lu cells): ", file_row, num_cells);
+    printf("ROW %llu (%llu cells): ", (unsigned long long)file_row, (unsigned long long)num_cells);
     for (size_t i = 0; i != num_cells; ++i) {
       const char* cell_buffer = buffer + offsets[i];
       size_t len = (offsets[i+1] - offsets[i]);

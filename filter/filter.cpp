@@ -812,7 +812,8 @@ uint64_t parse_csv_file( const char* filename, Builder & builder, OutputFile con
          );   // always collect error context
 
    static const size_t buffer_size = 64*1024;   // 64k buffer
-   char buffer[buffer_size];
+   vector<char> buffer_vec(buffer_size);	// alloc in heap
+   char * buffer = &buffer_vec[0];
 
    InputFile in(filename);
    uint64_t in_size = in.size();
@@ -1011,7 +1012,7 @@ int main(int argc, char **argv)
 
             // write the header, IF there is any Output Headers specified
             // and ONLY if we are on the first config file
-            if (arg == first_config_file_idx and !config.output_header.empty())
+            if (arg == first_config_file_idx && !config.output_header.empty())
             {
                outcsv.begin_row();
 
