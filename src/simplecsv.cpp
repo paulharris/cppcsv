@@ -165,7 +165,7 @@ void Table::dump() const // {{{
 
 int Table::find_column(const std::string &name) const // {{{
 {
-  std::multimap<std::string,size_t>::const_iterator it=rev_column.find(name);
+  std::multimap<std::string,size_t,lt_nocase_str>::const_iterator it=rev_column.find(name);
   if (it==rev_column.end()) {
     return -1;
   }
@@ -242,7 +242,7 @@ void Table::IBuild::setHeader(Table &csv,const std::vector<std::string>& names) 
   const size_t len = names.size();
   csv.columnnames.reserve(len);
   for (size_t iA=0;iA<len;iA++) {
-    std::multimap<std::string, size_t>::iterator it=csv.rev_column.insert(std::make_pair(names[iA],iA));
+    std::multimap<std::string, size_t,lt_nocase_str>::iterator it=csv.rev_column.insert(std::make_pair(names[iA],iA));
     csv.columnnames.push_back(&it->first);
   }
 }
