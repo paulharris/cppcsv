@@ -28,6 +28,7 @@ public:
 		quote_quotes(quote_quotes),
       col(0),
       min_columns(min_columns),
+      pending_seps(0),
       row_is_open(false)
   {}
   csv_writer(Output out,Char qchar= Char('"'),Char sep=Char(','),bool smart_quote=false, size_t min_columns = 0, bool quote_quotes = true)
@@ -37,6 +38,7 @@ public:
 		quote_quotes(quote_quotes),
       col(0),
       min_columns(min_columns),
+      pending_seps(0),
       row_is_open(false),
       current_row(0)
   {}
@@ -45,17 +47,25 @@ public:
     assert(!row_is_open);
     row_is_open = true;
     col = 0;
+    pending_seps = 0;
     ++current_row;
   }
   void cell(const Char *buf, size_t len) {
     assert(row_is_open);
     if (col != 0) {
-      out(&sep,1);
+      ++pending_seps;
     }
     ++col;
-    if (!buf) {
+    if (!buf || len == 0) {
       return;
     }
+
+    while (pending_seps > 0)
+    {
+      out(&sep,1);
+      --pending_seps;
+    }
+
     if ( (qchar == 0) || ((smart_quote)&&(!need_quote(buf,len)))) {
       out(buf,len);
     } else {
@@ -83,6 +93,8 @@ public:
      row_is_open = false;
      static const Char newline = Char('\n');
 
+     assert(col >= pending_seps);
+     col -= pending_seps;
      while (col < min_columns)
      {
        if (col != 0)
@@ -166,6 +178,7 @@ private:
 
   size_t col;
   size_t min_columns;
+  size_t pending_seps;  // saves up the separators for blank cells
 
   bool row_is_open;
   size_t current_row;
