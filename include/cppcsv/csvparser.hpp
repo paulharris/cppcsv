@@ -571,16 +571,16 @@ bool process_chunk(const char *&buf, const size_t len)
 //
 // n = fread(..);
 // if (n == 0) {
-//    if (!csv.flush()) handle error;
+//    if (csv.flush()) handle error;
 // }
 // else {
-//    if (!csv.process_chunk(buf,n)) handle error;
+//    if (csv.process_chunk(buf,n)) handle error;
 // }
 //
 //    to:
 //
 // n = fread(..);
-// if (!csv.process(buf,n)) handle error;
+// if (csv.process(buf,n)) handle error;
 //
 bool process(const char *&buf, const size_t len)
 {
