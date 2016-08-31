@@ -93,6 +93,15 @@ install (TARGETS csv_filter
    RUNTIME DESTINATION bin
    )
 
+# A CSV grid->sparse program
+add_executable(csv_convert_grid_to_sparse convert_grid_to_sparse/convert_grid_to_sparse.cpp ${HEADERS})
+target_link_libraries(csv_convert_grid_to_sparse cppcsv)
+install (TARGETS csv_convert_grid_to_sparse
+   ARCHIVE DESTINATION lib
+   LIBRARY DESTINATION lib
+   RUNTIME DESTINATION bin
+   )
+
 
 # tests
 if (CPPCSV_TESTS)
