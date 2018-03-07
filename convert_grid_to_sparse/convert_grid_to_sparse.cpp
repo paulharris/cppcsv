@@ -98,7 +98,7 @@ public:
 
    void cell(const char* buf, size_t len)
    {
-      if (col >= first_col and row >= first_row and buf)
+      if (col >= first_col && row >= first_row && buf)
       {
          writer.begin_row();
          writer.cell(filename.c_str(), filename.size());
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
       {
          string filename = argv[arg];
          FILE* fp = fopen(filename.c_str(), "rb");
-         if (not fp)
+         if (!fp)
             throw runtime_error("Could not open file " + filename);
          FileCloser closer(fp);
 
@@ -165,7 +165,7 @@ int main(int argc, char **argv)
                true     // always collect error context
                );
 
-         while (not feof(fp))
+         while (!feof(fp))
          {
             size_t n = fread(buffer, 1, bufsize, fp);
 
