@@ -1,3 +1,5 @@
+#pragma once
+
 // Copyright (c) 2013 Tobias Hoffmann
 //               2013 Paul Harris <paulharris@computer.org>
 //

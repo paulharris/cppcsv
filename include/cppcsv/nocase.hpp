@@ -1,5 +1,4 @@
-#ifndef _NOCASE_H
-#define _NOCASE_H
+#pragma once
 
 #include <locale>
 #include <string>
@@ -24,5 +23,3 @@ struct lt_nocase_str : public std::binary_function<std::string, std::string, boo
                                         lt_char(ct));
   }
 };
-
-#endif
