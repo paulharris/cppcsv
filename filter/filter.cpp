@@ -27,6 +27,9 @@
 #  include <unistd.h>
 #endif
 
+// plain <cstdint> should work for newer compilers
+#include <boost/cstdint.hpp>
+
 using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 
