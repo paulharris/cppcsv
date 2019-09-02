@@ -1,0 +1,11 @@
+Add Filename To Row,TRUE,,,,,,,,
+Files Have Header,TRUE,,,,,,,,
+Input Header,header4,header6
+Exclude Blank,,,,,,,,,
+Exclude Text,,,,,,,,,
+Filter Min,,,,,,,,,
+Filter Max,,,,,,,,,
+Comment Character
+Comment At Start Only
+Column Order,header6,header4
+Output Header,newname_6,newname_4
