@@ -30,6 +30,8 @@
 // plain <cstdint> should work for newer compilers
 #include <boost/cstdint.hpp>
 
+#include <boost/lexical_cast.hpp>
+
 using cppcsv::csv_parser;
 using cppcsv::csv_writer;
 
@@ -48,6 +50,8 @@ using std::runtime_error;
 using std::cerr;
 using std::cout;
 using std::endl;
+
+using boost::lexical_cast;
 
 
 
@@ -132,6 +136,8 @@ class ConfigBuilder : public cppcsv::per_cell_tag
       ExcludeText,
       FilterMin,
       FilterMax,
+      CommentCharacter,
+      CommentAtStartOnly,
       ColumnOrder,
       OutputHeader,
       End
@@ -139,14 +145,18 @@ class ConfigBuilder : public cppcsv::per_cell_tag
 
    State state;
    size_t column;
+   size_t row_num;
 
 public:
    ConfigBuilder() :
       state(Begin),
       column(0),
+      row_num(0),
       files_have_header(false),
       add_filename_to_row(false),
-      has_input_headers(false)
+      has_input_headers(false),
+      comment_char('\0'),
+      comment_at_start_only(true)
    {}
 
    typedef pair<size_t, double> FilterNumber;
@@ -166,10 +176,14 @@ public:
    vector<size_t> output_order_1; // 0=blank, 1+ is a column. as many as they like.
    vector<string> output_header; // as many as output_header
 
+   char comment_char;
+   bool comment_at_start_only;
+
 
    void begin_row()
    {
       column = 0;
+      ++row_num;
    }
 
 
@@ -184,17 +198,18 @@ public:
       // transition state based on first column's value
       if (column == 0)
       {
+         string row_num_txt = lexical_cast<string>(row_num);
          switch (state)
          {
             case Begin:
                if (!str_equal("Add Filename To Row", buf, len))
-                  throw runtime_error("Line should start with 'Add Filename To Row'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Add Filename To Row', instead saw: " + string(buf,buf+len));
                state = AddFilenameToRow;
                break;
 
             case AddFilenameToRow:
                if (!str_equal("Files Have Header", buf, len))
-                  throw runtime_error("Line should start with 'Files Have Header'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Files Have Header', instead saw: " + string(buf,buf+len));
                state = FilesHaveHeader;
                break;
 
@@ -209,7 +224,7 @@ public:
                else if (str_equal("Exclude Blank", buf, len))
                   state = ExcludeBlank;
                else
-                  throw runtime_error("Line should start with 'Input Header', or 'Exclude Blank'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Input Header', or 'Exclude Blank', instead saw: " + string(buf,buf+len));
                break;
 
             case InputHeader:
@@ -218,13 +233,13 @@ public:
                   input_headers.pop_back();
 
                if (!str_equal("Exclude Blank", buf, len))
-                  throw runtime_error("Line should start with 'Exclude Blank'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Exclude Blank', instead saw: " + string(buf,buf+len));
                state = ExcludeBlank;
                break;
 
             case ExcludeBlank:
                if (!str_equal("Exclude Text", buf, len))
-                  throw runtime_error("Line should start with 'Exclude Text'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Exclude Text', instead saw: " + string(buf,buf+len));
                state = ExcludeText;
                break;
 
@@ -232,25 +247,37 @@ public:
                if (str_equal("Exclude Text", buf, len))
                   break;   // stay in this state
                if (!str_equal("Filter Min", buf, len))
-                  throw runtime_error("Line should start with 'Filter Min'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Filter Min', instead saw: " + string(buf,buf+len));
                state = FilterMin;
                break;
 
             case FilterMin:
                if (!str_equal("Filter Max", buf, len))
-                  throw runtime_error("Line should start with 'Filter Max'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Filter Max', instead saw: " + string(buf,buf+len));
                state = FilterMax;
                break;
 
             case FilterMax:
+               if (!str_equal("Comment Character", buf, len))
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Comment Character', instead saw: " + string(buf,buf+len));
+               state = CommentCharacter;
+               break;
+
+            case CommentCharacter:
+               if (!str_equal("Comment At Start Only", buf, len))
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Comment At Start Only', instead saw: " + string(buf,buf+len));
+               state = CommentAtStartOnly;
+               break;
+
+            case CommentAtStartOnly:
                if (!str_equal("Column Order", buf, len))
-                  throw runtime_error("Line should start with 'Column Order'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Column Order', instead saw: " + string(buf,buf+len));
                state = ColumnOrder;
                break;
 
             case ColumnOrder:
                if (!str_equal("Output Header", buf, len))
-                  throw runtime_error("Line should start with 'Output Header'");
+                  throw runtime_error("Line " + row_num_txt + " should start with 'Output Header', instead saw: " + string(buf,buf+len));
                state = OutputHeader;
                break;
 
@@ -331,6 +358,19 @@ public:
                      throw runtime_error("Error parsing FilterMin number '" + string(begin,len) + "'");
                }
                break;
+
+
+            case CommentCharacter:
+               if (column == 1 && len > 0)
+                  comment_char = buf[0];
+               break;
+
+
+            case CommentAtStartOnly:
+               if (column == 1)
+                  comment_at_start_only = str_equal("TRUE", buf, len);
+               break;
+
 
             case ColumnOrder:
                {
@@ -576,9 +616,14 @@ public:
       config(config),
       out(out),
       first_row(true),
-      filename(filename)
+      filename(filename),
+      comment_char(config.comment_char),
+      comment_at_start_only(config.comment_at_start_only)
    {
    }
+
+   char comment_char;
+   bool comment_at_start_only;
 
 
    size_t get_current_row()
@@ -750,7 +795,10 @@ class ExtractHeaderBuilder : public cppcsv::per_cell_tag
 public:
    struct done_exception {};  // thrown when header seen - for early cancelling
 
-   ExtractHeaderBuilder( Csv_to_Stdout & out ) : out(out) {}
+   ExtractHeaderBuilder( Csv_to_Stdout & out ) : out(out), comment_char(0), comment_at_start_only(true) {}
+
+   char comment_char;
+   bool comment_at_start_only;
 
    void begin_row()
    {
@@ -809,8 +857,8 @@ uint64_t parse_csv_file( const char* filename, Builder & builder, OutputFile con
          ',',     // delimiters
          true,    // always trim whitespace
          false,   // collapse_delimiters,
-         '#', // comment
-         true,    // comments must be at the start
+         builder.comment_char, // comment
+         builder.comment_at_start_only,    // comments must be at the start
          true
          );   // always collect error context
 
